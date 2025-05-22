@@ -1,6 +1,6 @@
 "use client"; // This is needed for client-side interactivity
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   TrendingUp, 
   FileText, 
@@ -11,7 +11,13 @@ import {
   ArrowUpCircle,
   Fish, 
   Megaphone, 
-  Gavel 
+  Gavel,
+  Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  ArrowLeftRight
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import ActionButton from '@/components/ui/ActionButton';
@@ -21,18 +27,46 @@ import ListItem from '@/components/ui/ListItem';
 import { theme } from '@/styles/theme';
 
 export default function HomeScreen() {
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  
+  const toggleBalanceVisibility = () => {
+    setIsBalanceVisible(!isBalanceVisible);
+  };
+
   return (
     <>
       {/* Account Overview Card */}
       <div className="m-4">
         <Card>
           <div className="p-5">
-            <div className="text-gray-500 text-sm mb-1">Cuenta: juan.mk</div>
-            <div className="flex items-baseline">
-              <span className="text-3xl font-bold mr-1">₭ 26,950</span>
-              <span className="text-sm text-gray-500 align-top">.81</span>
+            <div className="flex justify-between items-start mb-4">
+              <div className="text-gray-500 text-sm">Cuenta: juan.mk</div>
+              <div 
+                className="text-sm text-blue-600 cursor-pointer"
+                onClick={() => console.log('Ver movimientos')}
+              >
+                Ver mis movimientos &gt;
+              </div>
             </div>
-            <div className="flex justify-end items-center text-xs mt-1">
+            
+            <div className="flex items-baseline mb-4">
+              {isBalanceVisible ? (
+                <>
+                  <span className="text-3xl font-bold mr-1">₭ 26,950</span>
+                  <span className="text-lg text-gray-500 self-start">81</span>
+                </>
+              ) : (
+                <span className="text-3xl font-bold">₭ ••••••</span>
+              )}
+              <button 
+                onClick={toggleBalanceVisibility}
+                className="ml-2 text-gray-400 hover:text-gray-600 self-baseline"
+              >
+                {isBalanceVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+              </button>
+            </div>
+            
+            <div className="flex justify-center items-center text-xs">
               <ArrowUpCircle size={14} className="text-green-500 mr-1" />
               <div className="text-green-600 font-medium">₭ 25</div>
               <div className="ml-1 text-gray-500">desde la última vez</div>
@@ -44,24 +78,24 @@ export default function HomeScreen() {
       {/* Primary Actions */}
       <div className="grid grid-cols-4 px-4 pb-6 text-center text-xs gap-4">
         <ActionButton 
-          icon={<div className="text-blue-600 font-bold text-lg">IN</div>} 
-          label="Ingresar"
-          bgColor={theme.colors.primary.light}
-        />
-        <ActionButton 
-          icon={<div className="text-red-600 font-bold text-lg">TR</div>} 
-          label="Transferir"
-          bgColor={theme.colors.danger.light}
-        />
-        <ActionButton 
-          icon={<div className="text-green-600 font-bold text-lg">EX</div>} 
-          label="Extraer"
+          icon={<ArrowUp size={24} className="text-green-600" />} 
+          label="Depositar"
           bgColor={theme.colors.success.light}
         />
         <ActionButton 
-          icon={<Clock size={24} className="text-purple-600" />} 
-          label="Movimientos"
+          icon={<ArrowRight size={24} className="text-blue-600" />} 
+          label="Transferir"
+          bgColor={theme.colors.primary.light}
+        />
+        <ActionButton 
+          icon={<ArrowLeftRight size={24} className="text-purple-600" />} 
+          label="Pactar"
           bgColor={theme.colors.secondary.light}
+        />
+        <ActionButton 
+          icon={<ArrowDown size={24} className="text-red-600" />} 
+          label="Extraer"
+          bgColor={theme.colors.danger.light}
         />
       </div>
 

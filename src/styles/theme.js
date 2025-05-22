@@ -31,7 +31,7 @@ export const theme = {
     },
   },
   gradients: {
-    primary: 'bg-gradient-to-r from-blue-600 to-blue-700',
+    primary: 'bg-gradient-to-r from-green-700 to-green-800',
     total: 'bg-gradient-to-r from-blue-50 to-green-50',
   }
 };
