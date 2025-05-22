@@ -14,7 +14,10 @@ export default function MovementItem({
   const amountColor = isPositive ? 'text-green-600' : 'text-red-600';
   const sign = isPositive ? '+' : '-';
   
-  // Different colors based on alignment (like chat messages)
+  // Different colors based on alignment (like chat messages). 
+  // Right: My devolutions to others' actions
+  // Left: Others' devolutions to my actions
+  
   const bgColor = alignment === "right" ? "bg-blue-50" : "bg-gray-50";
   const containerClass = alignment === "right" ? "ml-8" : "mr-8";
   

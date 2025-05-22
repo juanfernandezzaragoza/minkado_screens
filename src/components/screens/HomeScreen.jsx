@@ -110,14 +110,17 @@ export default function HomeScreen() {
             <ActionItem 
               icon={<Megaphone size={20} className="text-gray-700" />}
               label="Reportar acto"
+              onClick={() => router.push('/reportar-acto')}
             />
             <ActionItem 
               icon={<Gavel size={20} className="text-gray-700" />}
-              label="Validar actos"
+              label="Validar acto"
+              onClick={() => router.push('/validar-acto')}
             />
             <ActionItem 
               icon={<FileText size={20} className="text-gray-700" />}
               label="Describir acción"
+              onClick={() => router.push('/describir-accion')}
             />
             <ActionItem 
               icon={<Clock size={20} className="text-gray-700" />}
