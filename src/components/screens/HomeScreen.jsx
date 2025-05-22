@@ -1,6 +1,8 @@
 "use client"; // This is needed for client-side interactivity
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation'; // Add this import
+
 import { 
   TrendingUp, 
   FileText, 
@@ -28,6 +30,7 @@ import { theme } from '@/styles/theme';
 
 export default function HomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const router = useRouter();
   
   const toggleBalanceVisibility = () => {
     setIsBalanceVisible(!isBalanceVisible);
@@ -43,7 +46,7 @@ export default function HomeScreen() {
               <div className="text-gray-500 text-sm">Cuenta: juan.mk</div>
               <div 
                 className="text-sm text-blue-600 cursor-pointer"
-                onClick={() => console.log('Ver movimientos')}
+                onClick={() => router.push('/mis-movimientos')}
               >
                 Ver mis movimientos &gt;
               </div>
