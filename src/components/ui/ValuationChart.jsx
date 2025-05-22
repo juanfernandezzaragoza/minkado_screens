@@ -1,5 +1,41 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+
+// Custom Tooltip Component
+function CustomTooltip({ active, payload, label }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg text-xs">
+        <p className="font-medium text-gray-800">
+          Valor: {payload[0].value >= 0 ? '+' : ''}₭{payload[0].value}
+        </p>
+        {data.isYo && <p className="text-purple-600 font-medium">Tu valoración</p>}
+        {data.isMediana && <p className="text-gray-600 font-medium">Valoración mediana</p>}
+      </div>
+    );
+  }
+  return null;
+}
+
+// Custom Tooltip for Time Charts
+function TimeTooltip({ active, payload, label }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg text-xs">
+        <p className="font-medium text-gray-600 mb-1">Año: {label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} style={{ color: entry.color }} className="font-medium">
+            {entry.dataKey === 'personal' ? 'Tu valoración' : 
+             entry.dataKey === 'median' ? 'Mediana' : 'Impacto'}: 
+            +₭{entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
 
 export default function ValuationChart({ 
   title, 
@@ -42,9 +78,9 @@ export default function ValuationChart({
       if (payload.isYo) {
         return (
           <g>
-            <circle cx={cx} cy={cy} r={4} fill="#374151" stroke="#374151" strokeWidth={2} />
-            <text x={cx} y={cy + 20} fontSize="10" fill="#6b7280" textAnchor="middle">
-              Yo
+            <circle cx={cx} cy={cy} r={4} fill="#8b5cf6" stroke="#8b5cf6" strokeWidth={2} />
+            <text x={cx} y={cy - 12} fontSize="10" fill="#8b5cf6" textAnchor="middle" fontWeight="600">
+              Yo: +₭{payload.value}
             </text>
           </g>
         );
@@ -53,8 +89,8 @@ export default function ValuationChart({
         return (
           <g>
             <circle cx={cx} cy={cy} r={4} fill="#374151" stroke="#374151" strokeWidth={2} />
-            <text x={cx} y={cy + 20} fontSize="10" fill="#6b7280" textAnchor="middle">
-              Mediana
+            <text x={cx} y={cy + 18} fontSize="10" fill="#6b7280" textAnchor="middle" fontWeight="500">
+              Mediana: +₭{payload.value}
             </text>
           </g>
         );
@@ -64,11 +100,13 @@ export default function ValuationChart({
 
     return (
       <div className="p-4 bg-gray-50 rounded-lg mb-4">
-        <h4 className="font-medium text-gray-800 mb-3">{title}</h4>
+        <div className="text-center mb-3">
+          <h4 className="font-medium text-gray-800">{title}</h4>
+        </div>
         
         <div className="h-32 mb-4">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 25 }}>
+            <LineChart data={data} margin={{ top: 15, right: 5, left: 5, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 dataKey="index"
@@ -80,9 +118,10 @@ export default function ValuationChart({
                 domain={[-5, 25]}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-                tickFormatter={(value) => value >= 0 ? `+₭${value}` : `-₭${Math.abs(value)}`}
+                tick={false}
+                width={0}
               />
+              <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
                 dataKey="value" 
@@ -168,13 +207,26 @@ export default function ValuationChart({
 
     return (
       <div className="p-4 bg-gray-50 rounded-lg mb-4">
-        <h4 className="font-medium text-gray-800 mb-3">{title}</h4>
+        <div className="text-center mb-3">
+          <h4 className="font-medium text-gray-800">{title}</h4>
+        </div>
         
         <div className="space-y-4">
-          {/* Personal vs Median Chart */}
+          {/* Legend for the dual-line chart */}
+          <div className="flex justify-center space-x-4 text-xs">
+            <div className="flex items-center">
+              <div className="w-3 h-0.5 bg-purple-500 mr-1"></div>
+              <span className="text-gray-600">Tu valoración</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-0.5 bg-gray-600 mr-1"></div>
+              <span className="text-gray-600">Mediana</span>
+            </div>
+          </div>
+
           <div className="h-24">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={combinedData} margin={{ top: 5, right: 0, left: 0, bottom: 20 }}>
+              <LineChart data={combinedData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
                   dataKey="year" 
@@ -189,16 +241,16 @@ export default function ValuationChart({
                 <YAxis 
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 10, fill: '#6b7280' }}
-                  tickFormatter={(value) => `+₭${value}`}
+                  tick={false}
+                  width={0}
                 />
+                <Tooltip content={<TimeTooltip />} />
                 <Line 
                   type="monotone" 
                   dataKey="personal" 
-                  stroke="#374151" 
+                  stroke="#8b5cf6" 
                   strokeWidth={2}
                   dot={false}
-                  name="Yo"
                 />
                 <Line 
                   type="monotone" 
@@ -206,16 +258,18 @@ export default function ValuationChart({
                   stroke="#6b7280" 
                   strokeWidth={1}
                   dot={false}
-                  name="Med"
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Impact Chart */}
+          <div className="text-center mb-2">
+            <h5 className="font-medium text-gray-700 text-sm">Impacto total en el tiempo</h5>
+          </div>
+
           <div className="h-24">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={impactData} margin={{ top: 5, right: 0, left: 0, bottom: 20 }}>
+              <LineChart data={impactData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
                   dataKey="year" 
@@ -230,9 +284,10 @@ export default function ValuationChart({
                 <YAxis 
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 10, fill: '#6b7280' }}
-                  tickFormatter={(value) => `+₭${value}`}
+                  tick={false}
+                  width={0}
                 />
+                <Tooltip content={<TimeTooltip />} />
                 <Line 
                   type="monotone" 
                   dataKey="value" 
