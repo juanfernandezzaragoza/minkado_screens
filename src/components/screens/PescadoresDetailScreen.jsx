@@ -106,10 +106,21 @@ export default function PescadoresDetailScreen() {
         </Card>
       </div>
 
+      {/* Ver todas las acciones button */}
+      <div className="px-4 pb-4">
+        <button 
+          onClick={() => console.log('Ver todas las acciones valoradas por pescadores')}
+          className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
+        >
+          Ver todas las acciones valoradas por pescadores
+        </button>
+      </div>
+
       {/* Sub-Minkas Section */}
       <SectionTitle 
         title="Minkas en Pescadores" 
-        actionText="" 
+        actionText="Ver todas"
+        onAction={() => console.log('Ver todas las minkas')}
       />
 
       <div className="px-4 pb-4">
@@ -155,9 +166,14 @@ export default function PescadoresDetailScreen() {
         </Card>
       </div>
 
-      {/* Create Minka Button */}
+      {/* Ver todas las minkas button */}
       <div className="px-4 pb-6">
-        <CreateMinkaButton label="Crear minka en Pescadores" />
+        <button 
+          onClick={() => console.log('Ver todas las minkas en pescadores')}
+          className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
+        >
+          Ver todas las minkas en pescadores
+        </button>
       </div>
     </>
   );

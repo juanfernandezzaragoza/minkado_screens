@@ -89,6 +89,7 @@ export default function HomeScreen() {
           icon={<ArrowRight size={24} className="text-blue-600" />} 
           label="Transferir"
           bgColor={theme.colors.primary.light}
+          onClick={() => router.push('/transferir')}
         />
         <ActionButton 
           icon={<ArrowLeftRight size={24} className="text-purple-600" />} 
