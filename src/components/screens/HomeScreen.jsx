@@ -95,6 +95,7 @@ export default function HomeScreen() {
           icon={<ArrowLeftRight size={24} className="text-purple-600" />} 
           label="Pactar"
           bgColor={theme.colors.secondary.light}
+          onClick={() => router.push('/pactar')}
         />
         <ActionButton 
           icon={<ArrowDown size={24} className="text-red-600" />} 
