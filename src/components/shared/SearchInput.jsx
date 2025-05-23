@@ -12,14 +12,17 @@ export default function SearchInput({
   value = '',
   className = ""
 }) {
-  const [query, setQuery] = useState(value);
+  const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
+  // Only update internal query if external value changes and it's a string
   useEffect(() => {
-    setQuery(value);
+    if (typeof value === 'string') {
+      setQuery(value);
+    }
   }, [value]);
 
   const handleInputChange = (e) => {
@@ -31,7 +34,8 @@ export default function SearchInput({
   };
 
   const handleSelect = (suggestion, index) => {
-    setQuery(renderSuggestion ? renderSuggestion(suggestion) : suggestion.name || suggestion);
+    // Clear the input after selection
+    setQuery('');
     setShowSuggestions(false);
     setSelectedIndex(-1);
     onSelect(suggestion);

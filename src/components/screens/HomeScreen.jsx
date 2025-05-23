@@ -142,6 +142,7 @@ export default function HomeScreen() {
               icon={<PlusCircle size={20} className="text-blue-700" />}
               label="Nueva Minka"
               highlight={true}
+              onClick={() => router.push('/crear-minka')}
             />
           </div>
         </Card>
