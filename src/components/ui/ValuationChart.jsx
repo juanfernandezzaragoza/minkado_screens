@@ -1,4 +1,7 @@
+"use client";
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
 // Custom Tooltip Component
@@ -44,8 +47,17 @@ export default function ValuationChart({
   totalImpact, 
   showTimeChart = false, 
   showValuationInfo = true,
-  chartData = null 
+  chartData = null,
+  actionId = null
 }) {
+  const router = useRouter();
+
+  const handleModificar = () => {
+    if (actionId) {
+      router.push(`/valorar-accion?action=${actionId}`);
+    }
+  };
+
   if (!showTimeChart) {
     // Current valuation chart - 21 hardcoded points, monotonically growing
     const data = [
@@ -138,7 +150,12 @@ export default function ValuationChart({
             <div className="grid grid-cols-3 items-center">
               <span className="text-gray-600">Mi valoración:</span>
               <span className="font-medium text-gray-800 text-right">{currentValue}</span>
-              <span className="text-blue-600 underline cursor-pointer text-right">Modificar</span>
+              <span 
+                className={`text-right ${actionId ? 'text-blue-600 underline cursor-pointer' : 'text-gray-400'}`}
+                onClick={actionId ? handleModificar : undefined}
+              >
+                Modificar
+              </span>
             </div>
             <div className="grid grid-cols-3 items-center">
               <span className="text-gray-600">Valoración mediana:</span>

@@ -44,6 +44,7 @@ export default function EmprenderViajeScreen() {
             avgValue="+₭10"
             totalImpact="+₭500"
             showValuationInfo={true}
+            actionId="emprender-viaje"
           />
         </Card>
       </div>
