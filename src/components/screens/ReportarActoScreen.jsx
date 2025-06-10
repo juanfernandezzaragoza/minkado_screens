@@ -193,7 +193,7 @@ export default function ReportarActoScreen() {
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Reporte enviado exitosamente!</h2>
           <p className="text-gray-600 mb-4">
-            Se ha reportado que <strong>{selectedActor?.name}</strong> realizó la acción <strong>"{selectedAction?.nombre}"</strong>.
+            Se ha reportado que <strong>{selectedActor?.name}</strong> realizó la acción <strong>"{selectedAction?.name}"</strong>.
           </p>
           <p className="text-sm text-gray-500">
             El reporte será enviado para validación por la comunidad.
@@ -261,21 +261,23 @@ export default function ReportarActoScreen() {
                 onSearch={handleActionSearch}
                 suggestions={actionSearchResults}
                 onSelect={handleActionSelect}
-                value={selectedAction ? selectedAction.nombre : ''}
-                renderSuggestion={(action) => (
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText size={16} className="text-gray-600" />
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => {
+                  
+                  
+                  return (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{action.name}</div>
+                        <div className="text-sm text-gray-500">{action.description}</div>
+                      </div>
+                      
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{action.nombre}</div>
-                      <div className="text-sm text-gray-500">{action.resumen}</div>
-                    </div>
-                    <div className="text-sm font-medium text-blue-600">
-                      {action.valoracion}
-                    </div>
-                  </div>
-                )}
+                  );
+                }}
               />
             </FormField>
 
@@ -312,12 +314,8 @@ export default function ReportarActoScreen() {
                 </div>
                 
                 <div className="mb-2">
-                  <div className="font-medium text-gray-800">{selectedAction.nombre}</div>
-                  <div className="text-sm text-gray-600 mb-2">{selectedAction.resumen}</div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Alcance: {selectedAction.alcance}</span>
-                    <span className="font-medium text-blue-600">{selectedAction.valoracion}</span>
-                  </div>
+                  <div className="font-medium text-gray-800">{selectedAction.name}</div>
+                  <div className="text-sm text-gray-600 mb-2">{selectedAction.description}</div>
                 </div>
 
                 {showActionDetails && selectedAction.detalles && (

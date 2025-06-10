@@ -1,0 +1,113 @@
+{
+  "valuations": {
+    "pescadores": [
+      {
+        "actionId": "emprender-viaje",
+        "associatedMinka": "pescadores",
+        "complement": false,
+        "value": 12,
+        "medianValue": 10,
+        "totalImpact": 500,
+        "userValue": 12
+      },
+      {
+        "actionId": "vender-pescado",
+        "associatedMinka": "pescadores",
+        "complement": false,
+        "value": 0,
+        "medianValue": 0,
+        "totalImpact": 0,
+        "userValue": 0,
+        "isExchange": true,
+        "exchangePercentage": 20
+      },
+      {
+        "actionId": "pescar-trucha-bebe",
+        "associatedMinka": "global",
+        "complement": false,
+        "value": -200,
+        "medianValue": -180,
+        "totalImpact": -18000,
+        "userValue": -200
+      },
+      {
+        "actionId": "reparar-auto",
+        "associatedMinka": "pescadores",
+        "complement": true,
+        "value": 5,
+        "medianValue": 4,
+        "totalImpact": 400,
+        "userValue": 5
+      },
+      {
+        "actionId": "programar-app",
+        "associatedMinka": "pescadores",
+        "complement": false,
+        "value": 25,
+        "medianValue": 22,
+        "totalImpact": 1870,
+        "userValue": 25
+      }
+    ],
+    "atuneros": [
+      {
+        "actionId": "emprender-viaje",
+        "associatedMinka": "atuneros",
+        "complement": false,
+        "value": 15,
+        "medianValue": 13,
+        "totalImpact": 180,
+        "userValue": 15
+      },
+      {
+        "actionId": "pescar-trucha-bebe",
+        "associatedMinka": "global",
+        "complement": false,
+        "value": -250,
+        "medianValue": -220,
+        "totalImpact": -2640,
+        "userValue": -250
+      }
+    ],
+    "argentina": [
+      {
+        "actionId": "ayudar-vecino",
+        "associatedMinka": "argentina",
+        "complement": false,
+        "value": 8,
+        "medianValue": 7,
+        "totalImpact": 14000,
+        "userValue": 8
+      },
+      {
+        "actionId": "programar-app",
+        "associatedMinka": "argentina",
+        "complement": false,
+        "value": 30,
+        "medianValue": 28,
+        "totalImpact": 56000,
+        "userValue": 30
+      }
+    ],
+    "desarrolladores": [
+      {
+        "actionId": "programar-app",
+        "associatedMinka": "desarrolladores",
+        "complement": false,
+        "value": 50,
+        "medianValue": 45,
+        "totalImpact": 2250,
+        "userValue": 50
+      },
+      {
+        "actionId": "ayudar-vecino",
+        "associatedMinka": "desarrolladores",
+        "complement": true,
+        "value": 3,
+        "medianValue": 2,
+        "totalImpact": 100,
+        "userValue": 3
+      }
+    ]
+  }
+}

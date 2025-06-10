@@ -4,9 +4,10 @@ import {
   mockActions, 
   mockReports,
   mockMinkas,
-  mockActionDetails,
   mockMovements,
   mockUserMinkas,
+  mockValuations,
+  mockRecentCases,
   searchUsers as mockSearchUsers,
   searchActions as mockSearchActions,
   getUserMinkas as mockGetUserMinkas,
@@ -15,8 +16,13 @@ import {
   saveAction as mockSaveAction,
   saveReport as mockSaveReport,
   validateReport as mockValidateReport,
+  getMinkaValuations as mockGetMinkaValuations,
+  getActionValuation as mockGetActionValuation,
+  getActionsWithValuations as mockGetActionsWithValuations,
+  saveValuation as mockSaveValuation,
   getUserById,
-  getActionById
+  getActionById,
+  getRecentCases
 } from '@/data';
 
 class DataService {
@@ -54,7 +60,7 @@ class DataService {
     // return await api.get(`/minkas/${minkaId}/subminkas`);
   }
 
-  // Action related methods
+  // Action related methods (pure actions without valuations)
   async getActions() {
     if (this.useMockData) {
       return mockActions;
@@ -64,10 +70,42 @@ class DataService {
 
   async getAction(actionId) {
     if (this.useMockData) {
-      // Return extended action details for action pages
-      return mockActionDetails[actionId] || null;
+      // Find the action in the basic actions array
+      const action = getActionById(actionId);
+      if (!action) return null;
+      
+      // Add recent cases if available
+      const recentCases = getRecentCases(actionId);
+      
+      return {
+        ...action,
+        fullDescription: `# ${action.name}\n\n${action.description}`,
+        recentCases: recentCases
+      };
     }
     // return await api.get(`/actions/${actionId}`);
+  }
+
+  // Valuation related methods
+  async getMinkaValuations(minkaId) {
+    if (this.useMockData) {
+      return mockGetMinkaValuations(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/valuations`);
+  }
+
+  async getActionValuation(minkaId, actionId) {
+    if (this.useMockData) {
+      return mockGetActionValuation(minkaId, actionId);
+    }
+    // return await api.get(`/minkas/${minkaId}/valuations/${actionId}`);
+  }
+
+  async getActionsWithValuations(minkaId) {
+    if (this.useMockData) {
+      return mockGetActionsWithValuations(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/actions-with-valuations`);
   }
 
   async getMinkaActions(minkaId) {
@@ -183,30 +221,6 @@ class DataService {
     // return await api.post('/pacts', pactData);
   }
 
-  // Valuation methods
-  async getActionValuations(actionId, minkaId) {
-    if (this.useMockData) {
-      // Mock implementation
-      return {
-        userValuation: 12,
-        medianValuation: 10,
-        totalImpact: 500,
-        canModify: true
-      };
-    }
-    // return await api.get(`/actions/${actionId}/valuations/${minkaId}`);
-  }
-
-  async submitValuation(actionId, minkaId, karmaValue) {
-    if (this.useMockData) {
-      return {
-        success: true,
-        newValuation: karmaValue
-      };
-    }
-    // return await api.post(`/actions/${actionId}/valuations`, { minkaId, karmaValue });
-  }
-
   // Transfer methods
   async createTransfer(transferData) {
     if (this.useMockData) {
@@ -242,16 +256,8 @@ class DataService {
   // Additional helper methods for specific screens
   async getActionWithDetails(actionId) {
     if (this.useMockData) {
-      // This is used by ReportarActoScreen and ValorarAccionScreen
-      const action = getActionById(actionId);
-      const actionDetail = mockActionDetails[actionId];
-      
-      if (!action) return null;
-      
-      return {
-        ...action,
-        detalles: actionDetail?.fullDescription || `# ${action.nombre}\n\n${action.resumen}`
-      };
+      // Just use getAction since it now includes everything
+      return this.getAction(actionId);
     }
     // return await api.get(`/actions/${actionId}/full`);
   }
@@ -269,8 +275,6 @@ class DataService {
     }
     // return await api.get(`/users/${userId}/minkas/simple`);
   }
-
-  // NEW METHODS FOR MISSING FUNCTIONALITY
 
   // Get individual users by ID (used by ValidarActoScreen)
   async getUserById(userId) {
@@ -297,28 +301,26 @@ class DataService {
   }
 
   // Get valoration data for specific action and minka (used by ValorarAccionScreen)
-  async getValorationData(actionId, minkaId = null) {
+  async getValorationData(actionId, minkaId = 'pescadores') {
     if (this.useMockData) {
       const action = getActionById(actionId);
-      const actionDetail = mockActionDetails[actionId];
       
       if (!action) return null;
 
-      // Mock valorando/afectada minka data
-      const minkaValorando = minkaId ? 
-        mockMinkas.find(m => m.id === minkaId) || { id: 'pescadores', name: 'Pescadores', members: 85 } :
+      // Get the minka doing the valoration
+      const minkaValorando = mockMinkas.find(m => m.id === minkaId) || 
         { id: 'pescadores', name: 'Pescadores', members: 85 };
 
-      // For this example, assume same minka unless it's global
-      const minkaAfectada = action.scope === 'global' ? 
-        { id: 'global', name: 'Global', members: 10000 } : 
-        minkaValorando;
+      // For ValorarAccionScreen, we need to determine which minka is affected
+      // This should come from an existing valuation or be selected by the user
+      // For now, default to the same minka
+      const minkaAfectada = minkaValorando;
 
       return {
         accion: {
           id: action.id,
-          nombre: action.nombre,
-          descripcion: actionDetail?.fullDescription || `# ${action.nombre}\n\n${action.resumen}`
+          nombre: action.name,
+          descripcion: `# ${action.name}\n\n${action.description}`
         },
         minkaValorandoId: minkaValorando.id,
         minkaValorando: {
@@ -339,11 +341,22 @@ class DataService {
   // Submit karma valuation (used by ValorarAccionScreen)
   async submitKarmaValuation(valorationData) {
     if (this.useMockData) {
-      // Mock implementation - in real app this would update the database
-      console.log('Karma valuation submitted:', valorationData);
+      // Save the valuation using the mock function
+      const newValuation = mockSaveValuation(
+        valorationData.minkaId, 
+        valorationData.actionId, 
+        {
+          associatedMinka: valorationData.associatedMinka,
+          complement: valorationData.complement,
+          value: valorationData.karmaValue,
+          totalImpact: valorationData.totalImpact
+        }
+      );
+      
       return {
         success: true,
-        message: 'Valoración guardada exitosamente'
+        message: 'Valoración guardada exitosamente',
+        valuation: newValuation
       };
     }
     // return await api.post('/valuations', valorationData);
@@ -395,6 +408,42 @@ class DataService {
       };
     }
     // return await api.post('/minkas', minkaData);
+  }
+
+  // NEW: Get available minkas for valuation target selection
+  async getAvailableMinkas(currentMinkaId) {
+    if (this.useMockData) {
+      const currentMinka = mockMinkas.find(m => m.id === currentMinkaId);
+      const availableMinkas = [
+        { id: 'global', name: 'Global', type: 'global' }
+      ];
+      
+      // Add current minka
+      if (currentMinka) {
+        availableMinkas.push({
+          id: currentMinka.id,
+          name: currentMinka.name,
+          type: 'current'
+        });
+      }
+      
+      // Add sub-minkas
+      if (currentMinka?.subMinkas) {
+        currentMinka.subMinkas.forEach(subMinkaId => {
+          const subMinka = mockMinkas.find(m => m.id === subMinkaId);
+          if (subMinka) {
+            availableMinkas.push({
+              id: subMinka.id,
+              name: subMinka.name,
+              type: 'sub'
+            });
+          }
+        });
+      }
+      
+      return availableMinkas;
+    }
+    // return await api.get(`/minkas/${currentMinkaId}/available-for-valuation`);
   }
 }
 

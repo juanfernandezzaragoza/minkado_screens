@@ -154,7 +154,7 @@ export default function PactarScreen() {
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Pacto propuesto!</h2>
           <p className="text-gray-600 mb-4">
-            Se ha enviado la propuesta de pacto para <strong>"{selectedAction?.nombre}"</strong> a {selectedUsers.length} usuario{selectedUsers.length > 1 ? 's' : ''}.
+            Se ha enviado la propuesta de pacto para <strong>"{selectedAction?.name}"</strong> a {selectedUsers.length} usuario{selectedUsers.length > 1 ? 's' : ''}.
           </p>
           <p className="text-sm text-gray-500">
             Los participantes recibirán una notificación para aceptar o rechazar el pacto.
@@ -287,21 +287,23 @@ export default function PactarScreen() {
                 onSearch={handleActionSearch}
                 suggestions={actionSearchResults}
                 onSelect={handleActionSelect}
-                value={selectedAction ? selectedAction.nombre : ''}
-                renderSuggestion={(action) => (
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText size={16} className="text-gray-600" />
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => {
+                  
+                  
+                  return (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{action.name}</div>
+                        <div className="text-sm text-gray-500">{action.description}</div>
+                      </div>
+        
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{action.nombre}</div>
-                      <div className="text-sm text-gray-500">{action.resumen}</div>
-                    </div>
-                    <div className="text-sm font-medium text-blue-600">
-                      {action.valoracion}
-                    </div>
-                  </div>
-                )}
+                  );
+                }}
               />
             </FormField>
           </Card>
@@ -326,7 +328,7 @@ export default function PactarScreen() {
                 <h1 className="text-xl font-bold text-gray-800">Dirección de transferencia</h1>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                ¿Quién transfiere karma cuando alguien hace "{selectedAction?.nombre}"? (paso 3 de 5)
+                ¿Quién transfiere karma cuando alguien hace "{selectedAction?.name}"? (paso 3 de 5)
               </p>
             </div>
           </Card>
@@ -533,7 +535,7 @@ export default function PactarScreen() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Acción:</span>
-                    <span className="font-medium text-gray-800">{selectedAction.nombre}</span>
+                    <span className="font-medium text-gray-800">{selectedAction.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Participantes:</span>
@@ -556,7 +558,7 @@ export default function PactarScreen() {
 
               {/* Dynamic explanation */}
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Cuando cualquier participante realice "{selectedAction.nombre}":</h4>
+                <h4 className="font-medium text-blue-800 mb-2">Cuando cualquier participante realice "{selectedAction.name}":</h4>
                 <div className="text-blue-700 text-sm">
                   {transferDirection === 'give' ? (
                     <p>

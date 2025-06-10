@@ -1,0 +1,43 @@
+{
+  "recentCases": {
+    "emprender-viaje": [
+      {
+        "name": "Juan",
+        "time": "11:36",
+        "date": "10/2/2025",
+        "value": "₭300",
+        "isPositive": true
+      },
+      {
+        "name": "Vanna",
+        "time": "10:02",
+        "date": "11/1/2025",
+        "value": "₭200",
+        "isPositive": true
+      },
+      {
+        "name": "Juan",
+        "time": "10:00",
+        "date": "25/02/2023",
+        "value": "₭10",
+        "isPositive": true
+      }
+    ],
+    "ayudar-vecino": [
+      {
+        "name": "María",
+        "time": "14:30",
+        "date": "08/2/2025",
+        "value": "₭15",
+        "isPositive": true
+      },
+      {
+        "name": "Carlos",
+        "time": "09:15",
+        "date": "05/2/2025",
+        "value": "₭20",
+        "isPositive": true
+      }
+    ]
+  }
+}

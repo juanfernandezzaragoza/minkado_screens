@@ -109,7 +109,7 @@ export default function ValidarActoScreen() {
               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-800 mb-2">¡Validación confirmada!</h2>
               <p className="text-gray-600 mb-4">
-                Has confirmado que <strong>{currentActor?.name}</strong> efectivamente realizó la acción <strong>"{currentAction?.nombre}"</strong>.
+                Has confirmado que <strong>{currentActor?.name}</strong> efectivamente realizó la acción <strong>"{currentAction?.name}"</strong>.
               </p>
             </>
           ) : (
@@ -117,7 +117,7 @@ export default function ValidarActoScreen() {
               <XCircle size={48} className="text-red-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-800 mb-2">Reporte rechazado</h2>
               <p className="text-gray-600 mb-4">
-                Has determinado que la evidencia no es suficiente para confirmar que <strong>{currentActor?.name}</strong> realizó la acción <strong>"{currentAction?.nombre}"</strong>.
+                Has determinado que la evidencia no es suficiente para confirmar que <strong>{currentActor?.name}</strong> realizó la acción <strong>"{currentAction?.name}"</strong>.
               </p>
             </>
           )}
@@ -183,7 +183,7 @@ export default function ValidarActoScreen() {
                 <AlertTriangle size={20} className="text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-yellow-800 font-medium mb-1">
-                    Se reportó que <strong>{currentActor.name}</strong> realizó la acción <strong>"{currentAction.nombre}"</strong>
+                    Se reportó que <strong>{currentActor.name}</strong> realizó la acción <strong>"{currentAction.name}"</strong>
                   </p>
                   <p className="text-yellow-700 text-sm">
                     Hay <strong>₭50</strong> en juego si respondés correctamente.
@@ -219,20 +219,17 @@ export default function ValidarActoScreen() {
               <FileText size={18} className="text-blue-600 mr-2" />
               <h3 className="font-medium text-gray-800">Descripción de la acción</h3>
               <div className="ml-auto text-sm font-medium text-blue-600">
-                {currentAction.valoracion}
+                Acción: {currentAction.name}
               </div>
             </div>
             
             <div className="mb-3">
-              <h4 className="font-medium text-gray-800">{currentAction.nombre}</h4>
-              <p className="text-sm text-gray-600 mb-2">{currentAction.resumen}</p>
-              <div className="text-xs text-gray-500">
-                Alcance: {currentAction.alcance}
-              </div>
+              <h4 className="font-medium text-gray-800">{currentAction.name}</h4>
+              <p className="text-sm text-gray-600 mb-2">{currentAction.description}</p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-              <MarkdownViewer content={currentAction.detalles || `# ${currentAction.nombre}\n\n${currentAction.resumen}`} />
+              <MarkdownViewer content={currentAction.fullDescription || `# ${currentAction.name}\n\n${currentAction.description}`} />
             </div>
           </div>
         </Card>

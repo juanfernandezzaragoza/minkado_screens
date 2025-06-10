@@ -8,6 +8,7 @@ src/app/emprender-viaje/page.js
 src/app/globals.css
 src/app/layout.js
 src/app/minka/[minkaId]/page.js
+src/app/minka/[minkaId]/valuations/page.js
 src/app/mis-movimientos/page.js
 src/app/pactar/page.js
 src/app/page.js
@@ -16,6 +17,7 @@ src/app/reportar-acto/page.js
 src/app/transferir/page.js
 src/app/validar-acto/page.js
 src/app/valorar-accion/page.js
+src/app/valorar-nueva-accion/page.js
 src/components/layouts/AppLayout.jsx
 src/components/screens/ActionDetailScreen.jsx
 src/components/screens/CrearMinkaScreen.jsx
@@ -23,6 +25,7 @@ src/components/screens/DescribirAccionScreen.jsx
 src/components/screens/EmprenderViajeScreen.jsx
 src/components/screens/HomeScreen.jsx
 src/components/screens/MinkaDetailScreen.jsx
+src/components/screens/MinkaValuationsScreen.jsx
 src/components/screens/MisMovimientosScreen.jsx
 src/components/screens/PactarScreen.jsx
 src/components/screens/PescadoresDetailScreen.jsx
@@ -30,6 +33,7 @@ src/components/screens/ReportarActoScreen.jsx
 src/components/screens/TransferirScreen.jsx
 src/components/screens/ValidarActoScreen.jsx
 src/components/screens/ValorarAccionScreen.jsx
+src/components/screens/ValorarNuevaAccionScreen.jsx
 src/components/shared/FormField.jsx
 src/components/shared/MarkdownEditor.jsx
 src/components/shared/MarkdownViewer.jsx
@@ -60,11 +64,22 @@ import ActionDetailScreen from '@/components/screens/ActionDetailScreen';
 import AppLayout from '@/components/layouts/AppLayout';
 import { dataService } from '@/services/dataService';
 
-export default async function ActionPage({ params }) {
+export default async function ActionPage({ params, searchParams }) {
   const { actionId } = params;
+  const minkaId = searchParams?.minka || 'pescadores'; // Default to pescadores
   
   // Fetch the complete action details
   const action = await dataService.getAction(actionId);
+  
+  // Fetch minka context if provided
+  let minkaContext = null;
+  if (minkaId) {
+    try {
+      minkaContext = await dataService.getMinka(minkaId);
+    } catch (error) {
+      console.error('Error fetching minka context:', error);
+    }
+  }
   
   // Handle not found
   if (!action) {
@@ -80,7 +95,7 @@ export default async function ActionPage({ params }) {
   
   return (
     <AppLayout showBackButton={true}>
-      <ActionDetailScreen action={action} />
+      <ActionDetailScreen action={action} minkaContext={minkaContext} />
     </AppLayout>
   );
 }
@@ -307,6 +322,35 @@ export default async function MinkaPage({ params }) {
 
 
 
+//src/app/minka/[minkaId]/valuations/page.js
+
+import MinkaValuationsScreen from '@/components/screens/MinkaValuationsScreen';
+import AppLayout from '@/components/layouts/AppLayout';
+
+export default function MinkaValuationsPage({ params }) {
+  // Debug: Let's see exactly what we're getting
+  console.log('=== MinkaValuationsPage Debug ===');
+  console.log('Raw params:', params);
+  console.log('Params type:', typeof params);
+  console.log('Params keys:', params ? Object.keys(params) : 'no params');
+  console.log('minkaId value:', params?.minkaId);
+  console.log('================================');
+
+  // Show debug info on screen too
+  return (
+    <AppLayout showBackButton={true}>
+      <div className="m-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+        <h3 className="font-bold">Debug Info:</h3>
+        <p>Params: {JSON.stringify(params)}</p>
+        <p>MinkaId: {params?.minkaId || 'undefined'}</p>
+        <p>URL should be: /minka/pescadores/valuations</p>
+      </div>
+      <MinkaValuationsScreen params={params} />
+    </AppLayout>
+  );
+}
+
+
 //src/app/mis-movimientos/page.js
 
 import MisMovimientosScreen from '@/components/screens/MisMovimientosScreen';
@@ -421,6 +465,20 @@ export default function ValorarAccionPage() {
 }
 
 
+//src/app/valorar-nueva-accion/page.js
+
+import ValorarNuevaAccionScreen from '@/components/screens/ValorarNuevaAccionScreen';
+import AppLayout from '@/components/layouts/AppLayout';
+
+export default function ValorarNuevaAccionPage() {
+  return (
+    <AppLayout showBackButton={true}>
+      <ValorarNuevaAccionScreen />
+    </AppLayout>
+  );
+}
+
+
 //src/components/layouts/AppLayout.jsx
 
 import React from 'react';
@@ -441,10 +499,10 @@ export default function AppLayout({ children, showBackButton = false }) {
 
 //src/components/screens/ActionDetailScreen.jsx
 
-// src/components/screens/ActionDetailScreen.jsx
+// src/components/screens/ActionDetailScreen.jsx - Updated for pure actions
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Fish, 
@@ -458,13 +516,16 @@ import {
   Car,
   Briefcase,
   Home,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Code,
+  FileText
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import SectionTitle from '@/components/ui/SectionTitle';
 import CaseItem from '@/components/ui/CaseItem';
 import ValuationChart from '@/components/ui/ValuationChart';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
+import { dataService } from '@/services/dataService';
 
 // Extended icon mapping for all possible icons
 const iconMap = {
@@ -480,22 +541,77 @@ const iconMap = {
   Briefcase: Briefcase,
   Home: Home,
   ArrowLeftRight: ArrowLeftRight,
+  Code: Code,
+  FileText: FileText,
 };
 
-export default function ActionDetailScreen({ action }) {
+export default function ActionDetailScreen({ action, minkaContext = null }) {
   const router = useRouter();
+  const [valuation, setValuation] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Default to pescadores if no minka context provided
+  const currentMinkaId = minkaContext?.id || 'pescadores';
+  
+  useEffect(() => {
+    loadValuation();
+  }, [action.id, currentMinkaId]);
+
+  const loadValuation = async () => {
+    try {
+      const actionValuation = await dataService.getActionValuation(currentMinkaId, action.id);
+      setValuation(actionValuation);
+    } catch (error) {
+      console.error('Error loading valuation:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Get the appropriate icons
   const ActionIcon = iconMap[action.icon] || MapPin;
-  const ScopeIcon = action.scope === 'global' ? Globe : (iconMap[action.scopeIcon] || Fish);
   
-  // Parse the valuation to determine color
-  const getValuationColor = (valuation) => {
-    if (!valuation) return 'text-gray-600';
-    if (valuation.startsWith('+')) return 'text-green-600';
-    if (valuation.startsWith('-')) return 'text-red-600';
-    return 'text-gray-600'; // For exchange types like "⇆ 20%"
-  };
+  // Determine scope icon based on valuation
+  let ScopeIcon, scopeLabel, scopeIconColor;
+  
+  if (valuation) {
+    if (valuation.associatedMinka === 'global') {
+      ScopeIcon = Globe;
+      scopeLabel = 'Global';
+      scopeIconColor = 'text-green-600';
+    } else if (valuation.complement) {
+      // For complement, show the icon with indication
+      ScopeIcon = iconMap[minkaContext?.icon] || Fish;
+      scopeLabel = `No ${valuation.associatedMinka}`;
+      scopeIconColor = 'text-red-600';
+    } else {
+      ScopeIcon = iconMap[minkaContext?.icon] || Fish;
+      scopeLabel = valuation.associatedMinka;
+      scopeIconColor = minkaContext?.iconColor || 'text-blue-600';
+    }
+  } else {
+    // Default if no valuation
+    ScopeIcon = Fish;
+    scopeLabel = 'No valorado';
+    scopeIconColor = 'text-gray-400';
+  }
+
+  // Format valuation value
+  let valueDisplay, valueColor;
+  
+  if (valuation) {
+    if (valuation.isExchange) {
+      valueDisplay = `⇆ ${valuation.exchangePercentage}%`;
+      valueColor = 'text-gray-600';
+    } else {
+      const isPositive = valuation.value >= 0;
+      valueDisplay = `${isPositive ? '+' : ''}₭${Math.abs(valuation.value)}`;
+      valueColor = isPositive ? 'text-green-600' : 'text-red-600';
+    }
+  } else {
+    valueDisplay = 'No valorado';
+    valueColor = 'text-gray-400';
+  }
 
   return (
     <>
@@ -511,38 +627,42 @@ export default function ActionDetailScreen({ action }) {
         </Card>
       </div>
 
-      {/* Applies To Section */}
-      <div className="px-4 pb-4">
-        <Card>
-          <div className="p-4 flex items-center">
-            <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center mr-3">
-              <ScopeIcon size={16} className={action.scope === 'global' ? 'text-green-600' : 'text-blue-700'} />
+      {/* Applies To Section - Only show if there's a valuation */}
+      {valuation && (
+        <div className="px-4 pb-4">
+          <Card>
+            <div className="p-4 flex items-center">
+              <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center mr-3">
+                <ScopeIcon size={16} className={scopeIconColor} />
+              </div>
+              <span className="text-gray-800 font-medium">
+                Aplica a {scopeLabel}
+                {valuation.complement && ' (complemento)'}
+              </span>
             </div>
-            <span className="text-gray-800 font-medium">
-              Aplica a {action.scope === 'global' ? 'Todos' : action.appliesTo?.join(', ') || 'Comunidad'}
-            </span>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
-      {/* Current Valuation - Only show if it's a karma value (not exchange) */}
-      {!action.currentValuation?.includes('⇆') && (
+      {/* Current Valuation - Only show if there's a valuation and it's not exchange */}
+      {valuation && !valuation.isExchange && (
         <div className="px-4 pb-4">
           <Card className="p-4">
             <ValuationChart 
               title="Valoración actual"
-              currentValue={action.currentValuation}
-              avgValue={action.medianValuation}
-              totalImpact={action.totalImpact}
+              currentValue={valueDisplay}
+              avgValue={`+₭${valuation.medianValue}`}
+              totalImpact={`+₭${valuation.totalImpact}`}
               showValuationInfo={true}
               actionId={action.id}
+              minkaId={currentMinkaId}
             />
           </Card>
         </div>
       )}
 
       {/* Exchange Information - Only show for exchange type actions */}
-      {action.currentValuation?.includes('⇆') && (
+      {valuation && valuation.isExchange && (
         <div className="px-4 pb-4">
           <Card className="p-4">
             <div className="flex items-center mb-3">
@@ -551,7 +671,7 @@ export default function ActionDetailScreen({ action }) {
             </div>
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <p className="text-purple-800">
-                Esta acción activa un intercambio de <strong>{action.currentValuation}</strong> entre los participantes del pacto.
+                Esta acción activa un intercambio de <strong>{valueDisplay}</strong> entre los participantes del pacto.
               </p>
             </div>
           </Card>
@@ -559,7 +679,7 @@ export default function ActionDetailScreen({ action }) {
       )}
 
       {/* Time-based Valuation - Only show if not exchange type */}
-      {!action.currentValuation?.includes('⇆') && (
+      {valuation && !valuation.isExchange && (
         <div className="px-4 pb-4">
           <Card className="p-4">
             <ValuationChart 
@@ -614,77 +734,24 @@ export default function ActionDetailScreen({ action }) {
         </>
       )}
 
-      {/* Details Section */}
-      {action.details && (
-        <>
-          <SectionTitle title="Detalles" />
-
-          <div className="px-4 pb-6">
-            <Card>
-              <div className="p-5">
-                {/* Ubicación */}
-                {action.details.ubicacion && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-800 mb-2">Ubicación</h4>
-                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                      {action.details.ubicacion.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Consideraciones */}
-                {action.details.consideraciones && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-800 mb-2">Consideraciones</h4>
-                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                      {action.details.consideraciones.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Condiciones */}
-                {action.details.condiciones && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-800 mb-2">Condiciones</h4>
-                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                      {action.details.condiciones.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Impacto */}
-                {action.details.impacto && (
-                  <div>
-                    <h4 className="font-medium text-gray-800 mb-2">Impacto</h4>
-                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                      {action.details.impacto.map((item, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-        </>
+      {/* No Valuation Notice */}
+      {!valuation && (
+        <div className="px-4 pb-4">
+          <Card className="p-4">
+            <div className="text-center">
+              <h3 className="font-medium text-gray-800 mb-2">No valorado por {minkaContext?.name || 'esta minka'}</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {minkaContext?.name || 'Esta minka'} aún no ha establecido una valoración para esta acción.
+              </p>
+              <button 
+                onClick={() => router.push(`/valorar-nueva-accion?minka=${currentMinkaId}&action=${action.id}`)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                Crear valoración
+              </button>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Action Buttons */}
@@ -697,23 +764,33 @@ export default function ActionDetailScreen({ action }) {
           Reportar que alguien hizo esta acción
         </button>
         
-        {/* Valorate this action - only if not exchange type */}
-        {!action.currentValuation?.includes('⇆') && (
+        {/* Valorate this action - only if there's a valuation and it's not exchange type */}
+        {valuation && !valuation.isExchange && (
           <button 
-            onClick={() => router.push(`/valorar-accion?action=${action.id}`)}
+            onClick={() => router.push(`/valorar-nueva-accion?minka=${currentMinkaId}&action=${action.id}`)}
             className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
           >
-            Cambiar mi valoración
+            Cambiar valoración de {minkaContext?.name || 'esta minka'}
           </button>
         )}
         
         {/* Create pact - only for exchange type actions */}
-        {action.currentValuation?.includes('⇆') && (
+        {valuation && valuation.isExchange && (
           <button 
             onClick={() => router.push(`/pactar?action=${action.id}`)}
             className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
           >
             Crear pacto con esta acción
+          </button>
+        )}
+
+        {/* Create valuation - only if no valuation exists */}
+        {!valuation && (
+          <button 
+            onClick={() => router.push(`/valorar-nueva-accion?minka=${currentMinkaId}&action=${action.id}`)}
+            className="w-full py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+          >
+            Crear valoración para {minkaContext?.name || 'esta minka'}
           </button>
         )}
       </div>
@@ -732,7 +809,7 @@ import { CheckCircle, AlertCircle, User, X, ChevronLeft, Fish, Users, Briefcase,
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, mockUsers } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function CrearMinkaScreen() {
   const router = useRouter();
@@ -779,12 +856,12 @@ export default function CrearMinkaScreen() {
     { name: 'Zap', component: Zap, color: 'text-yellow-700', keywords: ['innovación', 'cambio', 'transformación'] }
   ];
 
-  // Mock minkas where user is member (para elegir superminka)
-  const userMinkas = [
+  // Mock minkas where user is member (para elegir superminka) - will be fetched from dataService
+  const [userMinkas, setUserMinkas] = useState([
     { id: 'argentina', nombre: 'ARGENTINA', miembros: 2000 },
     { id: 'pescadores', nombre: 'PESCADORES', miembros: 85 },
     { id: 'causas-populares', nombre: 'CAUSAS POPULARES', miembros: 320 }
-  ];
+  ]);
 
   // Navigation
   const goToNextStep = () => setCurrentStep(prev => prev + 1);
@@ -796,12 +873,17 @@ export default function CrearMinkaScreen() {
   const totalSteps = shouldSkipStep2 ? 3 : 4;
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    const filteredResults = results.filter(user => 
-      user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
-    );
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      const filteredResults = results.filter(user => 
+        user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
+      );
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -882,8 +964,6 @@ export default function CrearMinkaScreen() {
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const minkaData = {
         nombre,
         descripcion,
@@ -895,7 +975,8 @@ export default function CrearMinkaScreen() {
         createdAt: new Date().toISOString()
       };
       
-      console.log('Minka created:', minkaData);
+      const result = await dataService.createMinka(minkaData);
+      console.log('Minka created:', result);
       setShowSuccess(true);
       
       setTimeout(() => {
@@ -1387,7 +1468,7 @@ import { CheckCircle, AlertCircle } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
-import { saveAction } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function DescribirAccionScreen() {
   const router = useRouter();
@@ -1450,10 +1531,7 @@ export default function DescribirAccionScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const savedAction = saveAction(formData);
+      const savedAction = await dataService.saveAction(formData);
       console.log('Action saved:', savedAction);
       
       setShowSuccess(true);
@@ -2113,6 +2191,10 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
     console.log('Leave minka', minka.id);
   };
 
+  const handleViewAllActions = () => {
+    router.push(`/minka/${minka.id}/valuations`);
+  };
+
   return (
     <>
       {/* Minka Title Card */}
@@ -2155,46 +2237,30 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
       </div>
 
       {/* Valued Actions Section */}
-      {actions.length > 0 && (
+      {actions && actions.length > 0 && (
         <>
           <SectionTitle 
             title="Acciones valoradas" 
             actionText="Ver todas" 
-            onAction={() => console.log('Ver todas acciones')} 
+            onAction={handleViewAllActions} 
           />
 
           <div className="px-4 pb-4">
             <Card>
-              {actions.map((action) => {
-                const ActionIcon = iconMap[action.icon] || Fish;
-                const ScopeIcon = action.scope === 'global' ? Globe : MinkaIcon;
-                
-                return (
-                  <ActionRow 
-                    key={action.id}
-                    icon={<ActionIcon size={18} className="text-gray-600" />}
-                    title={action.name}
-                    subtitle={action.description}
-                    value={action.currentValuation}
-                    valueColor={
-                      action.currentValuation.startsWith('+') ? 'text-green-600' :
-                      action.currentValuation.startsWith('-') ? 'text-red-600' :
-                      'text-gray-600'
-                    }
-                    actionId={action.id}
-                    scopeIcon={<ScopeIcon size={14} className={action.scope === 'global' ? 'text-green-600' : minka.iconColor} />}
-                    scopeLabel={action.scope === 'global' ? 'Global' : minka.name}
-                    miVoto="-0.5₭" // TODO: Get from user data
-                    resultado="-0.7₭" // TODO: Get from calculations
-                  />
-                );
-              })}
+              {actions.slice(0, 3).map((actionWithValuation, index) => (
+                <ActionRow 
+                  key={actionWithValuation.id || index}
+                  action={actionWithValuation}
+                  valuation={actionWithValuation.valuation}
+                  minkaContext={minka}
+                />
+              ))}
             </Card>
           </div>
 
           <div className="px-4 pb-4">
             <button 
-              onClick={() => console.log('Ver todas las acciones')}
+              onClick={handleViewAllActions}
               className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
             >
               Ver todas las acciones valoradas por {minka.name.toLowerCase()}
@@ -2203,8 +2269,34 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
         </>
       )}
 
+      {/* No Actions Message */}
+      {(!actions || actions.length === 0) && (
+        <>
+          <SectionTitle 
+            title="Acciones valoradas" 
+            actionText="Crear primera" 
+            onAction={() => router.push(`/valorar-nueva-accion?minka=${minka.id}`)} 
+          />
+
+          <div className="px-4 pb-4">
+            <Card className="p-6 text-center">
+              <h3 className="font-medium text-gray-800 mb-2">No hay acciones valoradas</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {minka.name} aún no ha valorado ninguna acción.
+              </p>
+              <button 
+                onClick={() => router.push(`/valorar-nueva-accion?minka=${minka.id}`)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Valorar primera acción
+              </button>
+            </Card>
+          </div>
+        </>
+      )}
+
       {/* Sub-Minkas Section */}
-      {subMinkas.length > 0 && (
+      {subMinkas && subMinkas.length > 0 && (
         <>
           <SectionTitle 
             title={`Minkas en ${minka.name}`} 
@@ -2255,6 +2347,215 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
             </button>
           </div>
         </>
+      )}
+
+      {/* Create Sub-Minka Section - Always show if no sub-minkas */}
+      {(!subMinkas || subMinkas.length === 0) && (
+        <div className="px-4 pb-6">
+          <Card className="p-6 text-center">
+            <h3 className="font-medium text-gray-800 mb-2">Crear primera sub-minka</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Podés crear minkas más específicas dentro de {minka.name}.
+            </p>
+            <button 
+              onClick={handleCreateSubminka}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Crear sub-minka
+            </button>
+          </Card>
+        </div>
+      )}
+    </>
+  );
+}
+
+
+//src/components/screens/MinkaValuationsScreen.jsx
+
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Fish, Users, Globe, Heart, Code, Car } from 'lucide-react';
+import Card from '@/components/ui/Card';
+import ActionRow from '@/components/ui/ActionRow';
+import { dataService } from '@/services/dataService';
+
+// Icon mapping
+const iconMap = {
+  Fish,
+  Users,
+  Globe,
+  Heart,
+  Code,
+  Car,
+  // Add more as needed
+};
+
+export default function MinkaValuationsScreen({ minkaId }) {
+  const router = useRouter();
+  
+  const [minka, setMinka] = useState(null);
+  const [actionsWithValuations, setActionsWithValuations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (minkaId) {
+      loadMinkaData();
+    } else {
+      setError('No minka ID provided');
+      setIsLoading(false);
+    }
+  }, [minkaId]);
+
+  const loadMinkaData = async () => {
+    try {
+      const minkaData = await dataService.getMinka(minkaId);
+      
+      if (!minkaData) {
+        setError(`Minka '${minkaId}' not found`);
+        return;
+      }
+      
+      const valuationsData = await dataService.getActionsWithValuations(minkaId);
+      
+      setMinka(minkaData);
+      setActionsWithValuations(valuationsData || []);
+      setError(null);
+    } catch (error) {
+      console.error('Error loading minka valuations:', error);
+      setError(`Error loading data: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateNewValuation = () => {
+    router.push(`/valorar-nueva-accion?minka=${minkaId}`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando valoraciones...</p>
+          <p className="text-xs text-gray-500 mt-2">Minka ID: {minkaId || 'undefined'}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!minka) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Minka no encontrada</h2>
+          <p className="text-gray-600 mb-4">La minka '{minkaId}' no existe.</p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
+  const MinkaIcon = iconMap[minka.icon] || iconMap.Users;
+
+  return (
+    <>
+      {/* Title Card */}
+      <div className="m-4">
+        <Card>
+          <div className="p-5">
+            <div className="flex items-center mb-3">
+              <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center mr-4">
+                <MinkaIcon size={28} className={minka.iconColor || 'text-blue-600'} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Acciones valoradas</h1>
+                <p className="text-gray-600">por {minka.name}</p>
+              </div>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Todas las acciones que {minka.name.toLowerCase()} ha valorado con karma.
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Create New Valuation Button */}
+      <div className="px-4 pb-4">
+        <button
+          onClick={handleCreateNewValuation}
+          className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center"
+        >
+          <Plus size={20} className="mr-2" />
+          Valorar nueva acción para {minka.name}
+        </button>
+      </div>
+
+      {/* Valuations List */}
+      <div className="px-4 pb-6">
+        {actionsWithValuations.length === 0 ? (
+          <Card className="p-6 text-center">
+            <h3 className="text-lg font-medium text-gray-800 mb-2">No hay valoraciones</h3>
+            <p className="text-gray-600 mb-4">
+              {minka.name} aún no ha valorado ninguna acción.
+            </p>
+            <button
+              onClick={handleCreateNewValuation}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Crear primera valoración
+            </button>
+          </Card>
+        ) : (
+          <Card>
+            {actionsWithValuations.map((actionWithValuation, index) => (
+              <ActionRow 
+                key={actionWithValuation.id || index}
+                action={actionWithValuation}
+                valuation={actionWithValuation.valuation}
+                minkaContext={minka}
+              />
+            ))}
+          </Card>
+        )}
+      </div>
+
+      {/* Footer Note */}
+      {actionsWithValuations.length > 0 && (
+        <div className="px-4 pb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 text-sm">
+              <strong>Nota:</strong> Estas valoraciones se aplican cuando alguien realiza estas acciones. 
+              Los miembros de {minka.name} contribuyen con el karma especificado.
+            </p>
+          </div>
+        </div>
       )}
     </>
   );
@@ -2383,7 +2684,7 @@ import { CheckCircle, AlertCircle, Users, FileText, ArrowRight, ArrowLeft, Perce
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, searchActions } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function PactarScreen() {
   const router = useRouter();
@@ -2409,9 +2710,14 @@ export default function PactarScreen() {
   const goToHome = () => router.push('/');
 
   // Handle action search
-  const handleActionSearch = (query) => {
-    const results = searchActions(query);
-    setActionSearchResults(results);
+  const handleActionSearch = async (query) => {
+    try {
+      const results = await dataService.searchActions(query);
+      setActionSearchResults(results);
+    } catch (error) {
+      console.error('Error searching actions:', error);
+      setActionSearchResults([]);
+    }
   };
 
   const handleActionSelect = (action) => {
@@ -2421,12 +2727,17 @@ export default function PactarScreen() {
   };
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    const filteredResults = results.filter(user => 
-      user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
-    );
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      const filteredResults = results.filter(user => 
+        user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
+      );
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -2487,8 +2798,6 @@ export default function PactarScreen() {
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const pactData = {
         actionId: selectedAction.id,
         creatorId: '1',
@@ -2499,7 +2808,8 @@ export default function PactarScreen() {
         createdAt: new Date().toISOString()
       };
       
-      console.log('Pact created:', pactData);
+      const result = await dataService.createPact(pactData);
+      console.log('Pact created:', result);
       setShowSuccess(true);
       
       setTimeout(() => {
@@ -3183,7 +3493,7 @@ import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { searchUsers, searchActions, saveReport } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function ReportarActoScreen() {
   const router = useRouter();
@@ -3201,9 +3511,14 @@ export default function ReportarActoScreen() {
   const [showActionDetails, setShowActionDetails] = useState(false);
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    setUserSearchResults(results);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      setUserSearchResults(results);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -3217,19 +3532,33 @@ export default function ReportarActoScreen() {
   };
 
   // Handle action search
-  const handleActionSearch = (query) => {
-    const results = searchActions(query);
-    setActionSearchResults(results);
+  const handleActionSearch = async (query) => {
+    try {
+      const results = await dataService.searchActions(query);
+      setActionSearchResults(results);
+    } catch (error) {
+      console.error('Error searching actions:', error);
+      setActionSearchResults([]);
+    }
   };
 
-  const handleActionSelect = (action) => {
-    setSelectedAction(action);
-    setActionSearchResults([]);
-    setShowActionDetails(true);
-    
-    // Clear error when action is selected
-    if (errors.action) {
-      setErrors(prev => ({ ...prev, action: '' }));
+  const handleActionSelect = async (action) => {
+    try {
+      // Get action with full details for display
+      const actionWithDetails = await dataService.getActionWithDetails(action.id);
+      setSelectedAction(actionWithDetails);
+      setActionSearchResults([]);
+      setShowActionDetails(true);
+      
+      // Clear error when action is selected
+      if (errors.action) {
+        setErrors(prev => ({ ...prev, action: '' }));
+      }
+    } catch (error) {
+      console.error('Error fetching action details:', error);
+      setSelectedAction(action);
+      setActionSearchResults([]);
+      setShowActionDetails(true);
     }
   };
 
@@ -3290,9 +3619,6 @@ export default function ReportarActoScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const reportData = {
         actionId: selectedAction.id,
         actorId: selectedActor.id,
@@ -3301,7 +3627,7 @@ export default function ReportarActoScreen() {
         fechaHoraActo: fechaHora
       };
       
-      const savedReport = saveReport(reportData);
+      const savedReport = await dataService.createReport(reportData);
       console.log('Report saved:', savedReport);
       
       setShowSuccess(true);
@@ -3479,7 +3805,7 @@ export default function ReportarActoScreen() {
                   </div>
                 </div>
 
-                {showActionDetails && (
+                {showActionDetails && selectedAction.detalles && (
                   <div className="mt-4 border-t border-blue-200 pt-4">
                     <h4 className="font-medium text-gray-800 mb-2">Descripción completa:</h4>
                     <div className="bg-white rounded p-3 max-h-60 overflow-y-auto">
@@ -3566,7 +3892,7 @@ import { CheckCircle, AlertCircle, User, ArrowRight, Minus } from 'lucide-react'
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function TransferirScreen() {
   const router = useRouter();
@@ -3581,11 +3907,16 @@ export default function TransferirScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    // Filter out current user (Juan)
-    const filteredResults = results.filter(user => user.id !== '1');
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      // Filter out current user (Juan)
+      const filteredResults = results.filter(user => user.id !== '1');
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -3660,9 +3991,6 @@ export default function TransferirScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const transferData = {
         fromUserId: '1', // Current user Juan
         toUserId: selectedUser.id,
@@ -3671,7 +3999,8 @@ export default function TransferirScreen() {
         timestamp: new Date().toISOString()
       };
       
-      console.log('Transfer saved:', transferData);
+      const result = await dataService.createTransfer(transferData);
+      console.log('Transfer saved:', result);
       setShowSuccess(true);
       
       // Navigate back after success
@@ -3898,7 +4227,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, AlertTriangle, User, FileText, Calendar, MapPin } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { getReports, getUserById, getActionById, validateReport } from '@/data';
+import { dataService } from '@/services/dataService';
 
 export default function ValidarActoScreen() {
   const router = useRouter();
@@ -3913,24 +4242,38 @@ export default function ValidarActoScreen() {
 
   // Load pending reports on component mount
   useEffect(() => {
-    const reports = getReports().filter(report => report.status === 'pending');
-    setPendingReports(reports);
-    
-    if (reports.length > 0) {
-      loadReport(reports[0], 0);
-    }
+    loadPendingReports();
   }, []);
 
+  const loadPendingReports = async () => {
+    try {
+      const reports = await dataService.getPendingReports();
+      setPendingReports(reports);
+      
+      if (reports.length > 0) {
+        loadReport(reports[0], 0);
+      }
+    } catch (error) {
+      console.error('Error loading pending reports:', error);
+    }
+  };
+
   // Load a specific report with its related data
-  const loadReport = (report, index) => {
-    const actor = getUserById(report.actorId);
-    const action = getActionById(report.actionId);
-    
-    setCurrentReport(report);
-    setCurrentActor(actor);
-    setCurrentAction(action);
-    setCurrentIndex(index);
-    setDecision(null);
+  const loadReport = async (report, index) => {
+    try {
+      const [actor, action] = await Promise.all([
+        dataService.getUserById(report.actorId),
+        dataService.getActionById(report.actionId)
+      ]);
+      
+      setCurrentReport(report);
+      setCurrentActor(actor);
+      setCurrentAction(action);
+      setCurrentIndex(index);
+      setDecision(null);
+    } catch (error) {
+      console.error('Error loading report details:', error);
+    }
   };
 
   // Handle validation decision
@@ -3940,11 +4283,8 @@ export default function ValidarActoScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Validate the report
-      validateReport(currentReport.id, isValid, '1'); // Current user Juan as validator
+      await dataService.validateReport(currentReport.id, isValid, '1'); // Current user Juan as validator
       
       setDecision(isValid);
       setShowSuccess(true);
@@ -3991,7 +4331,7 @@ export default function ValidarActoScreen() {
               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-800 mb-2">¡Validación confirmada!</h2>
               <p className="text-gray-600 mb-4">
-                Has confirmado que <strong>{currentActor?.name}</strong> efectivamente realizó la acción <strong>"{currentAction?.nombre}"</strong>.
+                Has confirmado que <strong>{currentActor?.name}</strong> efectivamente realizó la acción <strong>"{currentAction?.name}"</strong>.
               </p>
             </>
           ) : (
@@ -3999,7 +4339,7 @@ export default function ValidarActoScreen() {
               <XCircle size={48} className="text-red-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-800 mb-2">Reporte rechazado</h2>
               <p className="text-gray-600 mb-4">
-                Has determinado que la evidencia no es suficiente para confirmar que <strong>{currentActor?.name}</strong> realizó la acción <strong>"{currentAction?.nombre}"</strong>.
+                Has determinado que la evidencia no es suficiente para confirmar que <strong>{currentActor?.name}</strong> realizó la acción <strong>"{currentAction?.name}"</strong>.
               </p>
             </>
           )}
@@ -4065,7 +4405,7 @@ export default function ValidarActoScreen() {
                 <AlertTriangle size={20} className="text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-yellow-800 font-medium mb-1">
-                    Se reportó que <strong>{currentActor.name}</strong> realizó la acción <strong>"{currentAction.nombre}"</strong>
+                    Se reportó que <strong>{currentActor.name}</strong> realizó la acción <strong>"{currentAction.name}"</strong>
                   </p>
                   <p className="text-yellow-700 text-sm">
                     Hay <strong>₭50</strong> en juego si respondés correctamente.
@@ -4101,20 +4441,17 @@ export default function ValidarActoScreen() {
               <FileText size={18} className="text-blue-600 mr-2" />
               <h3 className="font-medium text-gray-800">Descripción de la acción</h3>
               <div className="ml-auto text-sm font-medium text-blue-600">
-                {currentAction.valoracion}
+                Acción: {currentAction.name}
               </div>
             </div>
             
             <div className="mb-3">
-              <h4 className="font-medium text-gray-800">{currentAction.nombre}</h4>
-              <p className="text-sm text-gray-600 mb-2">{currentAction.resumen}</p>
-              <div className="text-xs text-gray-500">
-                Alcance: {currentAction.alcance}
-              </div>
+              <h4 className="font-medium text-gray-800">{currentAction.name}</h4>
+              <p className="text-sm text-gray-600 mb-2">{currentAction.description}</p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-              <MarkdownViewer content={currentAction.detalles} />
+              <MarkdownViewer content={currentAction.fullDescription || `# ${currentAction.name}\n\n${currentAction.description}`} />
             </div>
           </div>
         </Card>
@@ -4130,7 +4467,7 @@ export default function ValidarActoScreen() {
             </div>
             
             <div className="text-xs text-gray-500 mb-3">
-              Reportado por {getUserById(currentReport.reporterId)?.name || 'Usuario desconocido'} el {formatDate(currentReport.createdAt)}
+              Reportado el {formatDate(currentReport.createdAt)}
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-80 overflow-y-auto">
@@ -4197,63 +4534,44 @@ export default function ValidarActoScreen() {
 
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, AlertCircle, Fish, Users, Globe } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
+import { dataService } from '@/services/dataService';
 
 export default function ValorarAccionScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const actionId = searchParams?.get('action');
   
-  // Mock data - esto vendría del backend
-  const mockValorationData = {
-    accion: {
-      id: '1',
-      nombre: 'Emprender viaje',
-      descripcion: `# Emprender viaje de pesca
-
-## Descripción
-Esta acción consiste en organizar y emprender un viaje de pesca en mar abierto utilizando una embarcación mediana.
-
-## Requisitos
-- Embarcación pesquera de más de 8 metros
-- Tripulación de 8 pescadores con experiencia
-- Salir de Puerto Alegro o Río de La Plata
-
-## Evidencia requerida
-Para demostrar que esta acción sucedió, se necesita:
-- Foto del barco saliendo del puerto
-- Lista de tripulación firmada
-- Coordenadas GPS del viaje
-- Registro de pesca obtenida`
-    },
-    minkaValorandoId: 'pescadores', // La minka que está haciendo la valoración
-    minkaValorando: {
-      id: 'pescadores',
-      nombre: 'Pescadores',
-      miembros: 85
-    },
-    minkaAfectada: {
-      id: 'pescadores', // Puede ser la misma o diferente
-      nombre: 'Pescadores',
-      miembros: 85
-    },
-    // Si fuera global:
-    // minkaAfectada: {
-    //   id: 'global',
-    //   nombre: 'Global',
-    //   miembros: 10000 // Número total de usuarios de la plataforma
-    // }
-  };
-
+  const [valorationData, setValorationData] = useState(null);
   const [karmaValue, setKarmaValue] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { accion, minkaValorando, minkaAfectada } = mockValorationData;
+  // Load valoration data on component mount
+  useEffect(() => {
+    if (actionId) {
+      loadValorationData();
+    }
+  }, [actionId]);
+
+  const loadValorationData = async () => {
+    try {
+      const data = await dataService.getValorationData(actionId);
+      setValorationData(data);
+    } catch (error) {
+      console.error('Error loading valoration data:', error);
+      setErrors({ load: 'Error al cargar los datos de la acción' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle karma input change
   const handleKarmaChange = (value) => {
@@ -4295,18 +4613,16 @@ Para demostrar que esta acción sucedió, se necesita:
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const valorationData = {
-        accionId: accion.id,
-        minkaValorandoId: minkaValorando.id,
-        minkaAfectadaId: minkaAfectada.id,
+      const submission = {
+        accionId: valorationData.accion.id,
+        minkaValorandoId: valorationData.minkaValorando.id,
+        minkaAfectadaId: valorationData.minkaAfectada.id,
         karmaValue: parseFloat(karmaValue),
         userId: '1' // Current user Juan
       };
       
-      console.log('Valoration saved:', valorationData);
+      const result = await dataService.submitKarmaValoration(submission);
+      console.log('Valoration saved:', result);
       setShowSuccess(true);
       
       // Navigate back after success
@@ -4322,12 +4638,45 @@ Para demostrar que esta acción sucedió, se necesita:
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando información de la acción...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (errors.load || !valorationData) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error al cargar</h2>
+          <p className="text-gray-600 mb-4">
+            {errors.load || 'No se pudo cargar la información de la acción'}
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
   // Calculate dynamic explanation values
   const karmaNum = parseFloat(karmaValue) || 0;
-  const totalImpact = Math.abs(karmaNum * minkaAfectada.miembros);
+  const totalImpact = Math.abs(karmaNum * valorationData.minkaAfectada.miembros);
   const isPositive = karmaNum > 0;
-  const isGlobal = minkaAfectada.id === 'global';
-  const isSameMinka = minkaValorando.id === minkaAfectada.id;
+  const isGlobal = valorationData.minkaAfectada.id === 'global';
+  const isSameMinka = valorationData.minkaValorando.id === valorationData.minkaAfectada.id;
 
   // Success state
   if (showSuccess) {
@@ -4337,7 +4686,7 @@ Para demostrar que esta acción sucedió, se necesita:
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Valoración enviada!</h2>
           <p className="text-gray-600 mb-4">
-            Tu valoración de <strong>{karmaValue} karma</strong> para la acción <strong>"{accion.nombre}"</strong> ha sido registrada.
+            Tu valoración de <strong>{karmaValue} karma</strong> para la acción <strong>"{valorationData.accion.nombre}"</strong> ha sido registrada.
           </p>
           <p className="text-sm text-gray-500">
             Esta valoración será aplicada cuando alguien realice esta acción.
@@ -4371,10 +4720,10 @@ Para demostrar que esta acción sucedió, se necesita:
             </div>
             
             <div className="mb-4">
-              <h4 className="font-bold text-gray-800 text-lg">{accion.nombre}</h4>
+              <h4 className="font-bold text-gray-800 text-lg">{valorationData.accion.nombre}</h4>
               <div className="flex items-center mt-2 text-sm text-gray-600">
                 <Users size={14} className="mr-1" />
-                <span>Valorando desde: {minkaValorando.nombre}</span>
+                <span>Valorando desde: {valorationData.minkaValorando.nombre}</span>
                 <span className="mx-2">•</span>
                 {isGlobal ? (
                   <>
@@ -4384,14 +4733,14 @@ Para demostrar que esta acción sucedió, se necesita:
                 ) : (
                   <>
                     <Fish size={14} className="mr-1" />
-                    <span>Afecta: {minkaAfectada.nombre}</span>
+                    <span>Afecta: {valorationData.minkaAfectada.nombre}</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-              <MarkdownViewer content={accion.descripcion} />
+              <MarkdownViewer content={valorationData.accion.descripcion} />
             </div>
           </div>
         </Card>
@@ -4404,8 +4753,8 @@ Para demostrar que esta acción sucedió, se necesita:
             {/* Question */}
             <div className="mb-6">
               <h3 className="font-medium text-gray-800 mb-4 text-lg">
-                ¿Cuánto te afecta que alguien {!isSameMinka && !isGlobal && `de ${minkaAfectada.nombre} `}
-                haga la acción "{accion.nombre}"?
+                ¿Cuánto te afecta que alguien {!isSameMinka && !isGlobal && `de ${valorationData.minkaAfectada.nombre} `}
+                haga la acción "{valorationData.accion.nombre}"?
               </h3>
             </div>
 
@@ -4434,11 +4783,11 @@ Para demostrar que esta acción sucedió, se necesita:
                 <h4 className="font-medium text-blue-800 mb-3">Estás proponiendo que:</h4>
                 <div className="text-blue-700 text-sm space-y-2">
                   <p>
-                    • Cuando alguien <strong>{!isGlobal && `de ${minkaAfectada.nombre} `}</strong>
-                    haga <strong>{accion.nombre}</strong>,
+                    • Cuando alguien <strong>{!isGlobal && `de ${valorationData.minkaAfectada.nombre} `}</strong>
+                    haga <strong>{valorationData.accion.nombre}</strong>,
                   </p>
                   <p>
-                    • Cada miembro de <strong>{minkaValorando.nombre}</strong> contribuya <strong>₭{karmaNum}</strong>
+                    • Cada miembro de <strong>{valorationData.minkaValorando.nombre}</strong> contribuya <strong>₭{karmaNum}</strong>
                   </p>
                   <p>
                     • Para <strong>{isPositive ? 'recompensarlo' : 'multarlo'}</strong> en <strong>₭{totalImpact.toLocaleString()}</strong>
@@ -4498,6 +4847,481 @@ Para demostrar que esta acción sucedió, se necesita:
                 }`}
               >
                 {isSubmitting ? 'Enviando valoración...' : 'Enviar mi voto'}
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+
+//src/components/screens/ValorarNuevaAccionScreen.jsx
+
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CheckCircle, AlertCircle, FileText, Users, Globe, X, Fish, Heart, Code, Car } from 'lucide-react';
+import Card from '@/components/ui/Card';
+import FormField from '@/components/shared/FormField';
+import SearchInput from '@/components/shared/SearchInput';
+import MarkdownViewer from '@/components/shared/MarkdownViewer';
+import { dataService } from '@/services/dataService';
+
+// Icon mapping
+const iconMap = {
+  Fish,
+  Users,
+  Globe,
+  Heart,
+  Code,
+  Car,
+  // Add more as needed
+};
+
+export default function ValorarNuevaAccionScreen() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const minkaId = searchParams?.get('minka') || 'pescadores';
+  
+  const [minka, setMinka] = useState(null);
+  const [selectedAction, setSelectedAction] = useState(null);
+  const [associatedMinka, setAssociatedMinka] = useState('');
+  const [complement, setComplement] = useState(false);
+  const [karmaValue, setKarmaValue] = useState('');
+  const [availableMinkas, setAvailableMinkas] = useState([]);
+  
+  const [actionSearchResults, setActionSearchResults] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [minkaId]);
+
+  const loadInitialData = async () => {
+    try {
+      const [minkaData, availableMinkaData] = await Promise.all([
+        dataService.getMinka(minkaId),
+        dataService.getAvailableMinkas(minkaId)
+      ]);
+      
+      setMinka(minkaData);
+      setAvailableMinkas(availableMinkaData);
+      
+      // Set default associated minka to current minka
+      setAssociatedMinka(minkaData.id);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setErrors({ load: 'Error al cargar los datos' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle action search
+  const handleActionSearch = async (query) => {
+    try {
+      const results = await dataService.searchActions(query);
+      setActionSearchResults(results);
+    } catch (error) {
+      console.error('Error searching actions:', error);
+      setActionSearchResults([]);
+    }
+  };
+
+  const handleActionSelect = (action) => {
+    setSelectedAction(action);
+    setActionSearchResults([]);
+    if (errors.action) {
+      setErrors(prev => ({ ...prev, action: '' }));
+    }
+  };
+
+  // Handle form changes
+  const handleKarmaChange = (value) => {
+    setKarmaValue(value);
+    if (errors.karma) {
+      setErrors(prev => ({ ...prev, karma: '' }));
+    }
+  };
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!selectedAction) {
+      newErrors.action = 'Debe seleccionar una acción para valorar';
+    }
+
+    if (!associatedMinka) {
+      newErrors.associatedMinka = 'Debe seleccionar a quién aplica la valoración';
+    }
+    
+    if (!karmaValue.trim()) {
+      newErrors.karma = 'Debe ingresar un valor de karma';
+    } else {
+      const numValue = parseFloat(karmaValue);
+      if (isNaN(numValue)) {
+        newErrors.karma = 'El valor debe ser un número válido';
+      } else if (Math.abs(numValue) > 1000) {
+        newErrors.karma = 'El valor debe estar entre -1000 y 1000';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      // Calculate total impact based on associated minka
+      const targetMinka = availableMinkas.find(m => m.id === associatedMinka);
+      let targetMembers = 1000; // Default for global
+      
+      if (targetMinka?.type === 'current') {
+        targetMembers = minka.members;
+      } else if (targetMinka?.type === 'sub') {
+        // Get subminka member count (would need to fetch this)
+        targetMembers = 50; // Placeholder
+      }
+
+      if (complement) {
+        // For complement, it's the inverse (total - minka members)
+        targetMembers = targetMembers > 100 ? targetMembers - 50 : targetMembers;
+      }
+
+      const valorationData = {
+        minkaId: minka.id,
+        actionId: selectedAction.id,
+        associatedMinka: associatedMinka,
+        complement: complement,
+        karmaValue: parseFloat(karmaValue),
+        totalImpact: Math.abs(parseFloat(karmaValue) * targetMembers)
+      };
+      
+      const result = await dataService.submitKarmaValuation(valorationData);
+      console.log('Valuation saved:', result);
+      setShowSuccess(true);
+      
+      // Navigate back after success
+      setTimeout(() => {
+        router.push(`/minka/${minka.id}/valuations`);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error saving valoration:', error);
+      setErrors({ submit: 'Error al guardar la valoración. Intenta nuevamente.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Calculate dynamic explanation values
+  const karmaNum = parseFloat(karmaValue) || 0;
+  const isPositive = karmaNum > 0;
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (errors.load || !minka) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error al cargar</h2>
+          <p className="text-gray-600 mb-4">
+            {errors.load || 'No se pudo cargar la información de la minka'}
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
+  // Success state
+  if (showSuccess) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">¡Valoración creada!</h2>
+          <p className="text-gray-600 mb-4">
+            <strong>{minka.name}</strong> ahora valora la acción <strong>"{selectedAction?.name}"</strong> en <strong>{karmaValue} karma</strong>.
+          </p>
+          <p className="text-sm text-gray-500">
+            Esta valoración se aplicará cuando alguien realice esta acción.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const MinkaIcon = iconMap[minka.icon] || iconMap.Users;
+
+  return (
+    <>
+      {/* Title Card */}
+      <div className="m-4">
+        <Card>
+          <div className="p-5">
+            <div className="flex items-center mb-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mr-3">
+                <MinkaIcon size={24} className={minka.iconColor || 'text-blue-600'} />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Valorar nueva acción</h1>
+                <p className="text-gray-600 text-sm">para {minka.name}</p>
+              </div>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Definí cuánto karma debería pagar cada miembro de {minka.name} cuando alguien realice una acción específica.
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Form */}
+      <div className="px-4 pb-6">
+        <Card className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Action Selection */}
+            <FormField
+              label="Acción a valorar"
+              required
+              error={errors.action}
+              description="Buscá y seleccioná la acción que querés que valora esta minka"
+            >
+              <SearchInput
+                placeholder="Buscar acción por nombre..."
+                onSearch={handleActionSearch}
+                suggestions={actionSearchResults}
+                onSelect={handleActionSelect}
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => (
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                      <FileText size={16} className="text-gray-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-800">{action.name}</div>
+                      <div className="text-sm text-gray-500">{action.description}</div>
+                    </div>
+                  </div>
+                )}
+              />
+            </FormField>
+
+            {/* Action Preview */}
+            {selectedAction && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-800 mb-2">Acción seleccionada:</h4>
+                <div className="mb-2">
+                  <div className="font-medium text-gray-800">{selectedAction.name}</div>
+                  <div className="text-sm text-gray-600">{selectedAction.description}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Associated Minka Selection */}
+            <FormField
+              label="¿A quién aplica?"
+              required
+              error={errors.associatedMinka}
+              description="Seleccioná a qué grupo aplica esta valoración"
+            >
+              <div className="space-y-3">
+                {availableMinkas.map((availableMinka) => {
+                  const isSelected = associatedMinka === availableMinka.id;
+                  let IconComponent = iconMap.Users;
+                  let iconColor = 'text-blue-600';
+                  
+                  if (availableMinka.type === 'global') {
+                    IconComponent = iconMap.Globe;
+                    iconColor = 'text-green-600';
+                  } else if (availableMinka.type === 'current') {
+                    IconComponent = iconMap[minka.icon] || iconMap.Users;
+                    iconColor = minka.iconColor || 'text-blue-600';
+                  }
+                  
+                  return (
+                    <label
+                      key={availableMinka.id}
+                      className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        isSelected 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="associatedMinka"
+                        value={availableMinka.id}
+                        checked={isSelected}
+                        onChange={(e) => setAssociatedMinka(e.target.value)}
+                        className="sr-only"
+                      />
+                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center mr-3">
+                        <IconComponent size={18} className={iconColor} />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800">{availableMinka.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {availableMinka.type === 'global' && 'Aplica a todos los usuarios'}
+                          {availableMinka.type === 'current' && `Aplica a miembros de ${minka.name}`}
+                          {availableMinka.type === 'sub' && `Aplica a miembros de ${availableMinka.name}`}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </FormField>
+
+            {/* Complement Option */}
+            {associatedMinka && associatedMinka !== 'global' && (
+              <FormField
+                label="Complemento"
+                description="¿Querés aplicar la valoración al complemento (los que NO son de esta minka)?"
+              >
+                <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={complement}
+                    onChange={(e) => setComplement(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-800">
+                      Aplicar a NO-{availableMinkas.find(m => m.id === associatedMinka)?.name}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      La valoración se aplicará a personas que NO sean de {availableMinkas.find(m => m.id === associatedMinka)?.name}
+                    </div>
+                  </div>
+                </label>
+              </FormField>
+            )}
+
+            {/* Karma Value Input */}
+            <FormField
+              label="Valor de karma"
+              required
+              error={errors.karma}
+              description="¿Cuánto karma debería pagar cada miembro de la minka cuando ocurra esta acción?"
+            >
+              <input
+                type="number"
+                step="0.1"
+                value={karmaValue}
+                onChange={(e) => handleKarmaChange(e.target.value)}
+                placeholder="Ej: 12.5, -5, 0.3"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.karma ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+            </FormField>
+
+            {/* Dynamic Explanation */}
+            {karmaValue && !isNaN(parseFloat(karmaValue)) && selectedAction && associatedMinka && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-3">Estás definiendo que:</h4>
+                <div className="text-blue-700 text-sm space-y-2">
+                  <p>
+                    • Cuando alguien {complement ? `que NO sea` : `de`} <strong>
+                      {availableMinkas.find(m => m.id === associatedMinka)?.name}
+                    </strong> haga <strong>"{selectedAction.name}"</strong>
+                  </p>
+                  <p>
+                    • Cada miembro de <strong>{minka.name}</strong> {isPositive ? 'premiará' : 'multará'} con <strong>₭{Math.abs(karmaNum)}</strong>
+                  </p>
+                  <p>
+                    • El impacto total será aproximadamente <strong>₭{Math.abs(karmaNum * minka.members).toLocaleString()}</strong>
+                  </p>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-blue-300">
+                  <p className="text-blue-800 font-medium">
+                    En otras palabras, como miembro de {minka.name}, estarías dispuesto a pagar <strong>₭{Math.abs(karmaNum)}</strong> para que esta acción 
+                    <strong> {isPositive ? 'se haga' : 'no se haga'}</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Confirmation */}
+            {karmaValue && !isNaN(parseFloat(karmaValue)) && selectedAction && associatedMinka && (
+              <div className="mb-6">
+                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="confirm"
+                    required
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
+                  />
+                  <label htmlFor="confirm" className="text-sm text-gray-700">
+                    Confirmo que {minka.name} debe valorar esta acción con estos parámetros
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Error */}
+            {errors.submit && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
+                <AlertCircle size={18} className="text-red-500 mr-2" />
+                <span className="text-red-700 text-sm">{errors.submit}</span>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !selectedAction || !associatedMinka || !karmaValue || isNaN(parseFloat(karmaValue))}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium text-white ${
+                  isSubmitting || !selectedAction || !associatedMinka || !karmaValue || isNaN(parseFloat(karmaValue))
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isSubmitting ? 'Guardando valoración...' : 'Crear valoración'}
               </button>
             </div>
           </form>
@@ -4826,23 +5650,43 @@ export default function ActionItem({ icon, label, highlight = false, onClick }) 
 
 //src/components/ui/ActionRow.jsx
 
-// src/components/ui/ActionRow.jsx - Updated version
+// src/components/ui/ActionRow.jsx - Updated with valuation support
 "use client";
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { 
+  Fish, 
+  MapPin, 
+  ShoppingBag, 
+  Baby, 
+  Globe, 
+  Users, 
+  Heart,
+  Car,
+  Code,
+  FileText,
+  X
+} from 'lucide-react';
+
+// Icon mapping
+const iconMap = {
+  Fish,
+  MapPin,
+  ShoppingBag,
+  Baby,
+  Globe,
+  Users,
+  Heart,
+  Car,
+  Code,
+  FileText,
+};
 
 export default function ActionRow({ 
-  icon, 
-  title, 
-  subtitle,
-  value, 
-  valueColor = "text-gray-600",
-  actionId = null,
-  scopeIcon,
-  scopeLabel,
-  miVoto,
-  resultado,
+  action,
+  valuation,
+  minkaContext,
   onClick = null
 }) {
   const router = useRouter();
@@ -4850,12 +5694,60 @@ export default function ActionRow({
   const handleClick = () => {
     if (onClick) {
       onClick();
-    } else if (actionId) {
-      router.push(`/action/${actionId}`); // Updated to use dynamic route
+    } else if (action?.id) {
+      router.push(`/action/${action.id}?minka=${minkaContext?.id || 'pescadores'}`);
     }
   };
 
-  const isClickable = actionId || onClick;
+  if (!action || !valuation) {
+    return null;
+  }
+
+  // Get action icon
+  const ActionIcon = iconMap[action.icon] || FileText;
+  
+  // Determine scope icon and label based on valuation
+  let ScopeIcon, scopeLabel, scopeIconColor;
+  
+  if (valuation.associatedMinka === 'global') {
+    ScopeIcon = Globe;
+    scopeLabel = 'Global';
+    scopeIconColor = 'text-green-600';
+  } else if (valuation.complement) {
+    // For complement (non-X), show crossed icon
+    const MinkaIcon = iconMap[minkaContext?.icon] || Users;
+    ScopeIcon = ({ size, className }) => (
+      <div className="relative">
+        <MinkaIcon size={size} className={className} />
+        <X size={size * 0.6} className="absolute top-0 left-0 text-red-500" />
+      </div>
+    );
+    scopeLabel = `No ${valuation.associatedMinka}`;
+    scopeIconColor = 'text-red-600';
+  } else {
+    // Regular minka
+    const minka = minkaContext?.id === valuation.associatedMinka ? 
+      minkaContext : 
+      { icon: 'Users', iconColor: 'text-blue-600' }; // Default for other minkas
+    
+    ScopeIcon = iconMap[minka.icon] || Users;
+    scopeLabel = valuation.associatedMinka;
+    scopeIconColor = minka.iconColor || 'text-blue-600';
+  }
+
+  // Format valuation value
+  let valueDisplay, valueColor;
+  
+  if (valuation.isExchange) {
+    valueDisplay = `⇆ ${valuation.exchangePercentage}%`;
+    valueColor = 'text-gray-600';
+  } else {
+    const isPositive = valuation.value >= 0;
+    valueDisplay = `${isPositive ? '+' : ''}₭ ${Math.abs(valuation.value)}`;
+    valueColor = isPositive ? 'text-green-600' : 'text-red-600';
+  }
+
+  const isClickable = action.id || onClick;
   
   return (
     <div 
@@ -4865,38 +5757,36 @@ export default function ActionRow({
       <div className="flex items-start justify-between">
         <div className="flex items-start flex-1 pr-4">
           <div className="w-8 h-8 flex items-center justify-center mr-3 mt-1">
-            {icon}
+            <ActionIcon size={18} className="text-gray-600" />
           </div>
           <div className="flex-1 max-w-xs">
             <div className="flex items-center justify-between mb-1">
-              <div className="text-gray-800 font-medium">{title}</div>
+              <div className="text-gray-800 font-medium">{action.name}</div>
               <div className="flex items-center ml-2">
                 <div className="w-4 h-4 flex items-center justify-center mr-1">
-                  {scopeIcon}
+                  <ScopeIcon size={14} className={scopeIconColor} />
                 </div>
                 <span className="text-xs text-gray-500">{scopeLabel}</span>
               </div>
             </div>
-            {subtitle && (
+            {action.description && (
               <div className="text-sm text-gray-600 mt-1">
-                {subtitle.length > 45 ? `${subtitle.substring(0, 45)}...` : subtitle}
+                {action.description.length > 45 ? `${action.description.substring(0, 45)}...` : action.description}
               </div>
             )}
           </div>
         </div>
         <div className="text-right">
-          <div className={`font-medium text-lg ${valueColor}`}>{value}</div>
+          <div className={`font-medium text-lg ${valueColor}`}>{valueDisplay}</div>
           <div className="text-xs text-gray-500 mt-1">
-            <div>Mi voto: {miVoto}</div>
-            <div>Resultado: {resultado}</div>
+            <div>Mi voto: {valuation.userValue >= 0 ? '+' : ''}₭{valuation.userValue}</div>
+            <div>Mediana: {valuation.medianValue >= 0 ? '+' : ''}₭{valuation.medianValue}</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-
 
 
 //src/components/ui/Card.jsx
@@ -5542,29 +6432,55 @@ import movementsData from './json/movements.json';
 import usersData from './json/users.json';
 import minkasData from './json/minkas.json';
 import actionsData from './json/actions.json';
+import valuationsData from './json/valuations.json';
 import reportsData from './json/reports.json';
 import pactsData from './json/pacts.json';
 
-// Export all data arrays (same as mockData.js had)
+// Export all data arrays
 export const mockMovements = movementsData.movements;
 export const mockUsers = usersData.users;
 export const mockMinkas = minkasData.minkas;
 export const mockActions = actionsData.actions;
 export const mockActionDetails = actionsData.actionDetails;
+export const mockValuations = valuationsData.valuations;
 export const mockReports = reportsData.reports;
 export const mockPacts = pactsData.pacts;
 export const mockUserMinkas = usersData.userMinkas;
 
-// Helper functions (same as mockData.js had)
+// Helper functions
 export const getUsers = () => mockUsers;
 export const getActions = () => mockActions;
 export const getReports = () => mockReports;
 export const getMinkas = () => mockMinkas;
+export const getValuations = () => mockValuations;
 
 export const getUserById = (id) => mockUsers.find(user => user.id === id);
 export const getActionById = (id) => mockActions.find(action => action.id === id);
 export const getReportById = (id) => mockReports.find(report => report.id === id);
 export const getMinkaById = (id) => mockMinkas.find(minka => minka.id === id);
+
+// Get valuations for a specific minka
+export const getMinkaValuations = (minkaId) => {
+  return mockValuations[minkaId] || [];
+};
+
+// Get a specific valuation for an action by a minka
+export const getActionValuation = (minkaId, actionId) => {
+  const minkaValuations = getMinkaValuations(minkaId);
+  return minkaValuations.find(v => v.actionId === actionId);
+};
+
+// Get actions with their valuations for a specific minka
+export const getActionsWithValuations = (minkaId) => {
+  const minkaValuations = getMinkaValuations(minkaId);
+  return minkaValuations.map(valuation => {
+    const action = getActionById(valuation.actionId);
+    return {
+      ...action,
+      valuation: valuation
+    };
+  });
+};
 
 export const searchUsers = (query) => {
   if (!query) return [];
@@ -5579,8 +6495,8 @@ export const searchActions = (query) => {
   if (!query) return [];
   const lowQuery = query.toLowerCase();
   return mockActions.filter(action => 
-    action.nombre.toLowerCase().includes(lowQuery) ||
-    action.resumen.toLowerCase().includes(lowQuery)
+    action.name.toLowerCase().includes(lowQuery) ||
+    action.description.toLowerCase().includes(lowQuery)
   );
 };
 
@@ -5590,9 +6506,8 @@ export const getUserMinkas = (userId) => {
 };
 
 export const getMinkaActions = (minkaId) => {
-  const minka = getMinkaById(minkaId);
-  if (!minka || !minka.actions) return [];
-  return minka.actions.map(actionId => mockActionDetails[actionId]).filter(Boolean);
+  // Return actions with their valuations for this minka
+  return getActionsWithValuations(minkaId);
 };
 
 export const getSubMinkas = (minkaId) => {
@@ -5606,6 +6521,10 @@ export const saveAction = (actionData) => {
   const newAction = {
     ...actionData,
     id: `action-${Date.now()}`,
+    name: actionData.nombre,
+    description: actionData.resumen,
+    fullDescription: actionData.detalles,
+    icon: 'FileText',
     createdAt: new Date().toISOString(),
     createdBy: 'juan.mk'
   };
@@ -5635,6 +6554,30 @@ export const validateReport = (reportId, isValid, validatorId) => {
   return report;
 };
 
+// Save new valuation for a minka
+export const saveValuation = (minkaId, actionId, valuationData) => {
+  if (!mockValuations[minkaId]) {
+    mockValuations[minkaId] = [];
+  }
+  
+  // Remove existing valuation for this action if it exists
+  mockValuations[minkaId] = mockValuations[minkaId].filter(v => v.actionId !== actionId);
+  
+  // Add new valuation
+  const newValuation = {
+    actionId,
+    associatedMinka: valuationData.associatedMinka,
+    complement: valuationData.complement || false,
+    value: valuationData.value,
+    medianValue: valuationData.value, // For now, set median same as value
+    totalImpact: valuationData.totalImpact,
+    userValue: valuationData.value
+  };
+  
+  mockValuations[minkaId].push(newValuation);
+  return newValuation;
+};
+
 // Additional exports for compatibility with existing code
 export { mockUsers as users };
 export { mockActions as actions };
@@ -5642,6 +6585,7 @@ export { mockReports as reports };
 export { mockMinkas as minkas };
 export { mockMovements as movements };
 export { mockPacts as pacts };
+export { mockValuations as valuations };
 
 // Default export for convenience
 export default {
@@ -5651,6 +6595,7 @@ export default {
   minkas: mockMinkas,
   movements: mockMovements,
   pacts: mockPacts,
+  valuations: mockValuations,
   userMinkas: mockUserMinkas,
   actionDetails: mockActionDetails,
   // Functions
@@ -5658,6 +6603,9 @@ export default {
   getActionById,
   getReportById,
   getMinkaById,
+  getMinkaValuations,
+  getActionValuation,
+  getActionsWithValuations,
   searchUsers,
   searchActions,
   getUserMinkas,
@@ -5665,7 +6613,8 @@ export default {
   getSubMinkas,
   saveAction,
   saveReport,
-  validateReport
+  validateReport,
+  saveValuation
 };
 
 
@@ -5680,6 +6629,7 @@ import {
   mockActionDetails,
   mockMovements,
   mockUserMinkas,
+  mockValuations,
   searchUsers as mockSearchUsers,
   searchActions as mockSearchActions,
   getUserMinkas as mockGetUserMinkas,
@@ -5688,9 +6638,13 @@ import {
   saveAction as mockSaveAction,
   saveReport as mockSaveReport,
   validateReport as mockValidateReport,
+  getMinkaValuations as mockGetMinkaValuations,
+  getActionValuation as mockGetActionValuation,
+  getActionsWithValuations as mockGetActionsWithValuations,
+  saveValuation as mockSaveValuation,
   getUserById,
   getActionById
-} from '@/data'; // Changed from '@/data/mockData' to '@/data'
+} from '@/data';
 
 class DataService {
   constructor(useMockData = true) {
@@ -5727,7 +6681,7 @@ class DataService {
     // return await api.get(`/minkas/${minkaId}/subminkas`);
   }
 
-  // Action related methods
+  // Action related methods (pure actions without valuations)
   async getActions() {
     if (this.useMockData) {
       return mockActions;
@@ -5741,6 +6695,28 @@ class DataService {
       return mockActionDetails[actionId] || null;
     }
     // return await api.get(`/actions/${actionId}`);
+  }
+
+  // Valuation related methods
+  async getMinkaValuations(minkaId) {
+    if (this.useMockData) {
+      return mockGetMinkaValuations(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/valuations`);
+  }
+
+  async getActionValuation(minkaId, actionId) {
+    if (this.useMockData) {
+      return mockGetActionValuation(minkaId, actionId);
+    }
+    // return await api.get(`/minkas/${minkaId}/valuations/${actionId}`);
+  }
+
+  async getActionsWithValuations(minkaId) {
+    if (this.useMockData) {
+      return mockGetActionsWithValuations(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/actions-with-valuations`);
   }
 
   async getMinkaActions(minkaId) {
@@ -5856,30 +6832,6 @@ class DataService {
     // return await api.post('/pacts', pactData);
   }
 
-  // Valuation methods
-  async getActionValuations(actionId, minkaId) {
-    if (this.useMockData) {
-      // Mock implementation
-      return {
-        userValuation: 12,
-        medianValuation: 10,
-        totalImpact: 500,
-        canModify: true
-      };
-    }
-    // return await api.get(`/actions/${actionId}/valuations/${minkaId}`);
-  }
-
-  async submitValuation(actionId, minkaId, karmaValue) {
-    if (this.useMockData) {
-      return {
-        success: true,
-        newValuation: karmaValue
-      };
-    }
-    // return await api.post(`/actions/${actionId}/valuations`, { minkaId, karmaValue });
-  }
-
   // Transfer methods
   async createTransfer(transferData) {
     if (this.useMockData) {
@@ -5923,7 +6875,7 @@ class DataService {
       
       return {
         ...action,
-        detalles: actionDetail?.fullDescription || `# ${action.nombre}\n\n${action.resumen}`
+        detalles: actionDetail?.fullDescription || action.fullDescription || `# ${action.name}\n\n${action.description}`
       };
     }
     // return await api.get(`/actions/${actionId}/full`);
@@ -5941,6 +6893,167 @@ class DataService {
       }));
     }
     // return await api.get(`/users/${userId}/minkas/simple`);
+  }
+
+  // Get individual users by ID (used by ValidarActoScreen)
+  async getUserById(userId) {
+    if (this.useMockData) {
+      return getUserById(userId);
+    }
+    // return await api.get(`/users/${userId}`);
+  }
+
+  // Get individual actions by ID with basic info (used by ValidarActoScreen)  
+  async getActionById(actionId) {
+    if (this.useMockData) {
+      return getActionById(actionId);
+    }
+    // return await api.get(`/actions/${actionId}/basic`);
+  }
+
+  // Get pending reports for validation (used by ValidarActoScreen)
+  async getPendingReports() {
+    if (this.useMockData) {
+      return mockReports.filter(report => report.status === 'pending');
+    }
+    // return await api.get('/reports?status=pending');
+  }
+
+  // Get valoration data for specific action and minka (used by ValorarAccionScreen)
+  async getValorationData(actionId, minkaId = 'pescadores') {
+    if (this.useMockData) {
+      const action = getActionById(actionId);
+      const actionDetail = mockActionDetails[actionId];
+      
+      if (!action) return null;
+
+      // Get the minka doing the valoration
+      const minkaValorando = mockMinkas.find(m => m.id === minkaId) || 
+        { id: 'pescadores', name: 'Pescadores', members: 85 };
+
+      return {
+        accion: {
+          id: action.id,
+          nombre: action.name,
+          descripcion: actionDetail?.fullDescription || action.fullDescription || `# ${action.name}\n\n${action.description}`
+        },
+        minkaValorandoId: minkaValorando.id,
+        minkaValorando: {
+          id: minkaValorando.id,
+          nombre: minkaValorando.name,
+          miembros: minkaValorando.members
+        }
+      };
+    }
+    // return await api.get(`/actions/${actionId}/valoration-data?minkaId=${minkaId}`);
+  }
+
+  // Submit karma valuation (used by ValorarAccionScreen)
+  async submitKarmaValuation(valorationData) {
+    if (this.useMockData) {
+      // Save the valuation using the mock function
+      const newValuation = mockSaveValuation(
+        valorationData.minkaId, 
+        valorationData.actionId, 
+        {
+          associatedMinka: valorationData.associatedMinka,
+          complement: valorationData.complement,
+          value: valorationData.karmaValue,
+          totalImpact: valorationData.totalImpact
+        }
+      );
+      
+      return {
+        success: true,
+        message: 'Valoración guardada exitosamente',
+        valuation: newValuation
+      };
+    }
+    // return await api.post('/valuations', valorationData);
+  }
+
+  // Create new minka (used by CrearMinkaScreen)
+  async createMinka(minkaData) {
+    if (this.useMockData) {
+      const newMinka = {
+        id: `minka-${Date.now()}`,
+        name: minkaData.nombre,
+        description: minkaData.descripcion,
+        icon: minkaData.icon,
+        iconColor: minkaData.iconColor,
+        parentId: minkaData.parentMinkaId,
+        creatorId: minkaData.creatorId,
+        members: 1, // Creator starts as first member
+        balance: '₭ 0',
+        isPositive: true,
+        actions: [],
+        subMinkas: [],
+        createdAt: minkaData.createdAt
+      };
+
+      // Add to minkas array
+      mockMinkas.push(newMinka);
+
+      // Add creator to minka membership
+      if (!mockUserMinkas[minkaData.creatorId]) {
+        mockUserMinkas[minkaData.creatorId] = [];
+      }
+      mockUserMinkas[minkaData.creatorId].push(newMinka.id);
+
+      // If there's a parent, add this as a sub-minka
+      if (minkaData.parentMinkaId) {
+        const parentMinka = mockMinkas.find(m => m.id === minkaData.parentMinkaId);
+        if (parentMinka) {
+          if (!parentMinka.subMinkas) {
+            parentMinka.subMinkas = [];
+          }
+          parentMinka.subMinkas.push(newMinka.id);
+        }
+      }
+
+      return {
+        success: true,
+        minka: newMinka,
+        invitedUserIds: minkaData.invitedUserIds
+      };
+    }
+    // return await api.post('/minkas', minkaData);
+  }
+
+  // NEW: Get available minkas for valuation target selection
+  async getAvailableMinkas(currentMinkaId) {
+    if (this.useMockData) {
+      const currentMinka = mockMinkas.find(m => m.id === currentMinkaId);
+      const availableMinkas = [
+        { id: 'global', name: 'Global', type: 'global' }
+      ];
+      
+      // Add current minka
+      if (currentMinka) {
+        availableMinkas.push({
+          id: currentMinka.id,
+          name: currentMinka.name,
+          type: 'current'
+        });
+      }
+      
+      // Add sub-minkas
+      if (currentMinka?.subMinkas) {
+        currentMinka.subMinkas.forEach(subMinkaId => {
+          const subMinka = mockMinkas.find(m => m.id === subMinkaId);
+          if (subMinka) {
+            availableMinkas.push({
+              id: subMinka.id,
+              name: subMinka.name,
+              type: 'sub'
+            });
+          }
+        });
+      }
+      
+      return availableMinkas;
+    }
+    // return await api.get(`/minkas/${currentMinkaId}/available-for-valuation`);
   }
 }
 

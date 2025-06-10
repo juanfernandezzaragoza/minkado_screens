@@ -50,6 +50,10 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
     console.log('Leave minka', minka.id);
   };
 
+  const handleViewAllActions = () => {
+    router.push(`/minka/${minka.id}/valuations`);
+  };
+
   return (
     <>
       {/* Minka Title Card */}
@@ -92,46 +96,30 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
       </div>
 
       {/* Valued Actions Section */}
-      {actions.length > 0 && (
+      {actions && actions.length > 0 && (
         <>
           <SectionTitle 
             title="Acciones valoradas" 
             actionText="Ver todas" 
-            onAction={() => console.log('Ver todas acciones')} 
+            onAction={handleViewAllActions} 
           />
 
           <div className="px-4 pb-4">
             <Card>
-              {actions.map((action) => {
-                const ActionIcon = iconMap[action.icon] || Fish;
-                const ScopeIcon = action.scope === 'global' ? Globe : MinkaIcon;
-                
-                return (
-                  <ActionRow 
-                    key={action.id}
-                    icon={<ActionIcon size={18} className="text-gray-600" />}
-                    title={action.name}
-                    subtitle={action.description}
-                    value={action.currentValuation}
-                    valueColor={
-                      action.currentValuation.startsWith('+') ? 'text-green-600' :
-                      action.currentValuation.startsWith('-') ? 'text-red-600' :
-                      'text-gray-600'
-                    }
-                    actionId={action.id}
-                    scopeIcon={<ScopeIcon size={14} className={action.scope === 'global' ? 'text-green-600' : minka.iconColor} />}
-                    scopeLabel={action.scope === 'global' ? 'Global' : minka.name}
-                    miVoto="-0.5₭" // TODO: Get from user data
-                    resultado="-0.7₭" // TODO: Get from calculations
-                  />
-                );
-              })}
+              {actions.slice(0, 3).map((actionWithValuation, index) => (
+                <ActionRow 
+                  key={actionWithValuation.id || index}
+                  action={actionWithValuation}
+                  valuation={actionWithValuation.valuation}
+                  minkaContext={minka}
+                />
+              ))}
             </Card>
           </div>
 
           <div className="px-4 pb-4">
             <button 
-              onClick={() => console.log('Ver todas las acciones')}
+              onClick={handleViewAllActions}
               className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
             >
               Ver todas las acciones valoradas por {minka.name.toLowerCase()}
@@ -140,8 +128,34 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
         </>
       )}
 
+      {/* No Actions Message */}
+      {(!actions || actions.length === 0) && (
+        <>
+          <SectionTitle 
+            title="Acciones valoradas" 
+            actionText="Crear primera" 
+            onAction={() => router.push(`/valorar-nueva-accion?minka=${minka.id}`)} 
+          />
+
+          <div className="px-4 pb-4">
+            <Card className="p-6 text-center">
+              <h3 className="font-medium text-gray-800 mb-2">No hay acciones valoradas</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {minka.name} aún no ha valorado ninguna acción.
+              </p>
+              <button 
+                onClick={() => router.push(`/valorar-nueva-accion?minka=${minka.id}`)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Valorar primera acción
+              </button>
+            </Card>
+          </div>
+        </>
+      )}
+
       {/* Sub-Minkas Section */}
-      {subMinkas.length > 0 && (
+      {subMinkas && subMinkas.length > 0 && (
         <>
           <SectionTitle 
             title={`Minkas en ${minka.name}`} 
@@ -192,6 +206,24 @@ export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
             </button>
           </div>
         </>
+      )}
+
+      {/* Create Sub-Minka Section - Always show if no sub-minkas */}
+      {(!subMinkas || subMinkas.length === 0) && (
+        <div className="px-4 pb-6">
+          <Card className="p-6 text-center">
+            <h3 className="font-medium text-gray-800 mb-2">Crear primera sub-minka</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Podés crear minkas más específicas dentro de {minka.name}.
+            </p>
+            <button 
+              onClick={handleCreateSubminka}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Crear sub-minka
+            </button>
+          </Card>
+        </div>
       )}
     </>
   );

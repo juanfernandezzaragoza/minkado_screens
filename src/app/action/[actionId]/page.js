@@ -2,11 +2,23 @@ import ActionDetailScreen from '@/components/screens/ActionDetailScreen';
 import AppLayout from '@/components/layouts/AppLayout';
 import { dataService } from '@/services/dataService';
 
-export default async function ActionPage({ params }) {
-  const { actionId } = params;
+export default async function ActionPage({ params, searchParams }) {
+  const { actionId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const minkaId = resolvedSearchParams?.minka; //Default to pescadores
   
   // Fetch the complete action details
   const action = await dataService.getAction(actionId);
+  
+  // Fetch minka context if provided
+  let minkaContext = null;
+  if (minkaId) {
+    try {
+      minkaContext = await dataService.getMinka(minkaId);
+    } catch (error) {
+      console.error('Error fetching minka context:', error);
+    }
+  }
   
   // Handle not found
   if (!action) {
@@ -22,7 +34,7 @@ export default async function ActionPage({ params }) {
   
   return (
     <AppLayout showBackButton={true}>
-      <ActionDetailScreen action={action} />
+      <ActionDetailScreen action={action} minkaContext={minkaContext} />
     </AppLayout>
   );
 }

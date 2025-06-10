@@ -3,7 +3,7 @@ import AppLayout from '@/components/layouts/AppLayout';
 import { dataService } from '@/services/dataService';
 
 export default async function MinkaPage({ params }) {
-  const { minkaId } = params;
+  const { minkaId } = await params;
   
   // Fetch minka data
   const minka = await dataService.getMinka(minkaId);
@@ -32,4 +32,3 @@ export default async function MinkaPage({ params }) {
     </AppLayout>
   );
 }
-
