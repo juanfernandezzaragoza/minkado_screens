@@ -1,0 +1,39 @@
+{
+  "reports": [
+    {
+      "id": "1",
+      "actionId": "emprender-viaje",
+      "actorId": "1",
+      "reporterId": "2",
+      "evidencia": "# Evidencia: Juan emprendió viaje de pesca\n\n## Fecha y hora\n10 de febrero de 2025, 11:36 AM\n\n## Evidencia presentada\n- **Foto del barco**: Embarcación \"Mar Azul\" saliendo del Puerto Alegro\n- **Lista de tripulación**: 8 pescadores registrados y firmados\n- **Coordenadas GPS**: Lat: -34.6118, Lng: -58.3960\n- **Registro de pesca**: 300kg de pescado variado obtenido\n\n## Testigos\n- Capitán del puerto confirma la salida\n- Otros pescadores presentes en el muelle",
+      "fechaHoraActo": "2025-02-10T11:36:00Z",
+      "status": "pending",
+      "createdAt": "2025-02-10T11:36:00Z",
+      "validationReward": "₭50"
+    },
+    {
+      "id": "2",
+      "actionId": "vender-pescado",
+      "actorId": "2",
+      "reporterId": "3",
+      "evidencia": "# Evidencia: Vanna vendió pescado\n\n## Fecha y hora\n11 de enero de 2025, 10:02 AM\n\n## Evidencia presentada\n- **Foto del puesto**: Mercado Central, puesto #15\n- **Comprobantes**: Facturas de venta por 200kg\n- **Certificado sanitario**: SENASA #2025-0111\n\n## Detalles\n- Pescado fresco del día\n- Vendido a precio justo de mercado",
+      "fechaHoraActo": "2025-01-11T10:02:00Z",
+      "status": "validated",
+      "createdAt": "2025-01-11T10:02:00Z",
+      "validationReward": "₭50",
+      "validatedBy": "4",
+      "validatedAt": "2025-01-11T14:30:00Z"
+    },
+    {
+      "id": "3",
+      "actionId": "pescar-trucha-bebe",
+      "actorId": "3",
+      "reporterId": "2",
+      "evidencia": "# Evidencia: Roberto pescó trucha bebé\n\n## Fecha y hora\n12 de febrero de 2025, 14:20 PM\n\n## Evidencia presentada\n- **Foto**: Truchas de menos de 5cm con regla visible\n- **Ubicación**: Río Limay, coordenadas GPS incluidas\n- **Testigos**: 2 pescadores locales presenciaron el hecho\n\n## Observaciones\n- Se le advirtió sobre la práctica ilegal\n- Continuó pescando a pesar de las advertencias",
+      "fechaHoraActo": "2025-02-12T14:20:00Z",
+      "status": "pending",
+      "createdAt": "2025-02-12T14:20:00Z",
+      "validationReward": "₭50"
+    }
+  ]
+}

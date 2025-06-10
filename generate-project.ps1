@@ -27,8 +27,8 @@ Get-ChildItem -Path "src" -Recurse -Include "*.js","*.jsx","*.css","*.ts","*.tsx
         Add-Content -Path "project.txt" -Value $filePath -Encoding UTF8
         Add-Content -Path "project.txt" -Value "" -Encoding UTF8
         
-        # Write file content
-        $content = Get-Content $_.FullName -Raw -Encoding UTF8
+        # Write file content using alternative method
+        $content = [System.IO.File]::ReadAllText($_.FullName, [System.Text.Encoding]::UTF8)
         Add-Content -Path "project.txt" -Value $content -Encoding UTF8
         
         # Add spacing between files

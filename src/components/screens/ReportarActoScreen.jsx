@@ -8,7 +8,7 @@ import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { searchUsers, searchActions, saveReport } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function ReportarActoScreen() {
   const router = useRouter();
@@ -26,9 +26,14 @@ export default function ReportarActoScreen() {
   const [showActionDetails, setShowActionDetails] = useState(false);
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    setUserSearchResults(results);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      setUserSearchResults(results);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -42,19 +47,33 @@ export default function ReportarActoScreen() {
   };
 
   // Handle action search
-  const handleActionSearch = (query) => {
-    const results = searchActions(query);
-    setActionSearchResults(results);
+  const handleActionSearch = async (query) => {
+    try {
+      const results = await dataService.searchActions(query);
+      setActionSearchResults(results);
+    } catch (error) {
+      console.error('Error searching actions:', error);
+      setActionSearchResults([]);
+    }
   };
 
-  const handleActionSelect = (action) => {
-    setSelectedAction(action);
-    setActionSearchResults([]);
-    setShowActionDetails(true);
-    
-    // Clear error when action is selected
-    if (errors.action) {
-      setErrors(prev => ({ ...prev, action: '' }));
+  const handleActionSelect = async (action) => {
+    try {
+      // Get action with full details for display
+      const actionWithDetails = await dataService.getActionWithDetails(action.id);
+      setSelectedAction(actionWithDetails);
+      setActionSearchResults([]);
+      setShowActionDetails(true);
+      
+      // Clear error when action is selected
+      if (errors.action) {
+        setErrors(prev => ({ ...prev, action: '' }));
+      }
+    } catch (error) {
+      console.error('Error fetching action details:', error);
+      setSelectedAction(action);
+      setActionSearchResults([]);
+      setShowActionDetails(true);
     }
   };
 
@@ -115,9 +134,6 @@ export default function ReportarActoScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const reportData = {
         actionId: selectedAction.id,
         actorId: selectedActor.id,
@@ -126,7 +142,7 @@ export default function ReportarActoScreen() {
         fechaHoraActo: fechaHora
       };
       
-      const savedReport = saveReport(reportData);
+      const savedReport = await dataService.createReport(reportData);
       console.log('Report saved:', savedReport);
       
       setShowSuccess(true);
@@ -304,7 +320,7 @@ export default function ReportarActoScreen() {
                   </div>
                 </div>
 
-                {showActionDetails && (
+                {showActionDetails && selectedAction.detalles && (
                   <div className="mt-4 border-t border-blue-200 pt-4">
                     <h4 className="font-medium text-gray-800 mb-2">Descripción completa:</h4>
                     <div className="bg-white rounded p-3 max-h-60 overflow-y-auto">

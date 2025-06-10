@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, User, X, ChevronLeft, Fish, Users, Briefcase,
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, mockUsers } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function CrearMinkaScreen() {
   const router = useRouter();
@@ -53,12 +53,12 @@ export default function CrearMinkaScreen() {
     { name: 'Zap', component: Zap, color: 'text-yellow-700', keywords: ['innovación', 'cambio', 'transformación'] }
   ];
 
-  // Mock minkas where user is member (para elegir superminka)
-  const userMinkas = [
+  // Mock minkas where user is member (para elegir superminka) - will be fetched from dataService
+  const [userMinkas, setUserMinkas] = useState([
     { id: 'argentina', nombre: 'ARGENTINA', miembros: 2000 },
     { id: 'pescadores', nombre: 'PESCADORES', miembros: 85 },
     { id: 'causas-populares', nombre: 'CAUSAS POPULARES', miembros: 320 }
-  ];
+  ]);
 
   // Navigation
   const goToNextStep = () => setCurrentStep(prev => prev + 1);
@@ -70,12 +70,17 @@ export default function CrearMinkaScreen() {
   const totalSteps = shouldSkipStep2 ? 3 : 4;
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    const filteredResults = results.filter(user => 
-      user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
-    );
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      const filteredResults = results.filter(user => 
+        user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
+      );
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -156,8 +161,6 @@ export default function CrearMinkaScreen() {
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const minkaData = {
         nombre,
         descripcion,
@@ -169,7 +172,8 @@ export default function CrearMinkaScreen() {
         createdAt: new Date().toISOString()
       };
       
-      console.log('Minka created:', minkaData);
+      const result = await dataService.createMinka(minkaData);
+      console.log('Minka created:', result);
       setShowSuccess(true);
       
       setTimeout(() => {

@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
-import { saveAction } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function DescribirAccionScreen() {
   const router = useRouter();
@@ -69,10 +69,7 @@ export default function DescribirAccionScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const savedAction = saveAction(formData);
+      const savedAction = await dataService.saveAction(formData);
       console.log('Action saved:', savedAction);
       
       setShowSuccess(true);

@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Users, FileText, ArrowRight, ArrowLeft, Perce
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, searchActions } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function PactarScreen() {
   const router = useRouter();
@@ -32,9 +32,14 @@ export default function PactarScreen() {
   const goToHome = () => router.push('/');
 
   // Handle action search
-  const handleActionSearch = (query) => {
-    const results = searchActions(query);
-    setActionSearchResults(results);
+  const handleActionSearch = async (query) => {
+    try {
+      const results = await dataService.searchActions(query);
+      setActionSearchResults(results);
+    } catch (error) {
+      console.error('Error searching actions:', error);
+      setActionSearchResults([]);
+    }
   };
 
   const handleActionSelect = (action) => {
@@ -44,12 +49,17 @@ export default function PactarScreen() {
   };
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    const filteredResults = results.filter(user => 
-      user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
-    );
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      const filteredResults = results.filter(user => 
+        user.id !== '1' && !selectedUsers.find(selected => selected.id === user.id)
+      );
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -110,8 +120,6 @@ export default function PactarScreen() {
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const pactData = {
         actionId: selectedAction.id,
         creatorId: '1',
@@ -122,7 +130,8 @@ export default function PactarScreen() {
         createdAt: new Date().toISOString()
       };
       
-      console.log('Pact created:', pactData);
+      const result = await dataService.createPact(pactData);
+      console.log('Pact created:', result);
       setShowSuccess(true);
       
       setTimeout(() => {

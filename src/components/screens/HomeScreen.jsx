@@ -1,8 +1,8 @@
-"use client"; // This is needed for client-side interactivity
+// src/components/screens/HomeScreen.jsx - Updated version
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Add this import
-
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, 
   FileText, 
@@ -19,7 +19,11 @@ import {
   ArrowUp,
   ArrowRight,
   ArrowDown,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Users,
+  Globe,
+  Heart,
+  // Import more icons as needed
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import ActionButton from '@/components/ui/ActionButton';
@@ -27,14 +31,121 @@ import ActionItem from '@/components/ui/ActionItem';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ListItem from '@/components/ui/ListItem';
 import { theme } from '@/styles/theme';
+import { dataService } from '@/services/dataService';
+
+// Icon mapping
+const iconMap = {
+  Fish: Fish,
+  Users: Users,
+  Globe: Globe,
+  Heart: Heart,
+  // Add more mappings as needed
+};
 
 export default function HomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [userMinkas, setUserMinkas] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  
+  useEffect(() => {
+    loadUserData();
+  }, []);
+  
+  const loadUserData = async () => {
+    try {
+      const [user, minkas] = await Promise.all([
+        dataService.getCurrentUser(),
+        dataService.getUserMinkas('1') // Current user ID
+      ]);
+      
+      setUserData(user);
+      setUserMinkas(organizeMinkasHierarchy(minkas));
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Organize minkas in hierarchy for display
+  const organizeMinkasHierarchy = (minkas) => {
+    const organized = [];
+    const minkaMap = {};
+    
+    // Create map
+    minkas.forEach(minka => {
+      minkaMap[minka.id] = { ...minka, children: [] };
+    });
+    
+    // Build hierarchy
+    minkas.forEach(minka => {
+      if (!minka.parentId) {
+        organized.push(minkaMap[minka.id]);
+      } else if (minkaMap[minka.parentId]) {
+        minkaMap[minka.parentId].children.push(minkaMap[minka.id]);
+      }
+    });
+    
+    return organized;
+  };
+  
+  // Calculate total balance
+  const calculateTotalBalance = () => {
+    return userMinkas.reduce((total, minka) => {
+      const minkaBalance = parseFloat(minka.balance.replace('₭', '').trim());
+      const childrenBalance = minka.children.reduce((childTotal, child) => {
+        return childTotal + parseFloat(child.balance.replace('₭', '').trim());
+      }, 0);
+      return total + minkaBalance + childrenBalance;
+    }, 0);
+  };
   
   const toggleBalanceVisibility = () => {
     setIsBalanceVisible(!isBalanceVisible);
   };
+  
+  const renderMinkaItem = (minka, indentLevel = 0) => {
+    const MinkaIcon = iconMap[minka.icon] || Users;
+    const items = [];
+    
+    // Add the minka itself
+    items.push(
+      <ListItem 
+        key={minka.id}
+        icon={
+          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+            <MinkaIcon size={22} className={minka.iconColor} />
+          </div>
+        }
+        title={minka.name}
+        subtitle={`${minka.members} miembros`}
+        value={minka.balance}
+        isPositive={minka.isPositive}
+        indentLevel={indentLevel}
+        minkaId={minka.id}
+        onClick={() => router.push(`/minka/${minka.id}`)}
+      />
+    );
+    
+    // Add children
+    if (minka.children && minka.children.length > 0) {
+      minka.children.forEach(child => {
+        items.push(...renderMinkaItem(child, indentLevel + 1));
+      });
+    }
+    
+    return items;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -43,7 +154,7 @@ export default function HomeScreen() {
         <Card>
           <div className="p-5">
             <div className="flex justify-between items-start mb-4">
-              <div className="text-gray-500 text-sm">Cuenta: juan.mk</div>
+              <div className="text-gray-500 text-sm">Cuenta: {userData?.username}</div>
               <div 
                 className="text-sm text-blue-600 cursor-pointer"
                 onClick={() => router.push('/mis-movimientos')}
@@ -55,8 +166,12 @@ export default function HomeScreen() {
             <div className="flex items-baseline mb-4">
               {isBalanceVisible ? (
                 <>
-                  <span className="text-3xl font-bold mr-1">₭ 26,950</span>
-                  <span className="text-lg text-gray-500 self-start">81</span>
+                  <span className="text-3xl font-bold mr-1">
+                    ₭ {userData?.balance.toLocaleString('es-AR')}
+                  </span>
+                  <span className="text-lg text-gray-500 self-start">
+                    {(userData?.balance % 1).toFixed(2).substring(2)}
+                  </span>
                 </>
               ) : (
                 <span className="text-3xl font-bold">₭ ••••••</span>
@@ -71,7 +186,7 @@ export default function HomeScreen() {
             
             <div className="flex justify-center items-center text-xs">
               <ArrowUpCircle size={14} className="text-green-500 mr-1" />
-              <div className="text-green-600 font-medium">₭ 25</div>
+              <div className="text-green-600 font-medium">₭ {userData?.lastChange || 0}</div>
               <div className="ml-1 text-gray-500">desde la última vez</div>
             </div>
           </div>
@@ -158,121 +273,13 @@ export default function HomeScreen() {
       {/* Minka List in Card */}
       <div className="px-4 pb-6">
         <Card>
-          {/* Argentina - Parent community */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden">
-                <div className="absolute w-8 h-8 flex flex-col">
-                  <div className="flex-1 bg-blue-500"></div>
-                  <div className="flex-1 bg-white flex items-center justify-center">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  </div>
-                  <div className="flex-1 bg-blue-500"></div>
-                </div>
-              </div>
-            }
-            title="ARGENTINA"
-            subtitle="2,000 miembros"
-            value="₭ 36"
-            isPositive={false}
-            indentLevel={0}
-            minkaId="argentina"
-          />
+          {/* Render hierarchical minkas */}
+          {userMinkas.map(minka => renderMinkaItem(minka))}
           
-          {/* Recoleta - Child of Argentina */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center text-xl">
-                😊
-              </div>
-            }
-            title="RECOLETA"
-            subtitle="42 miembros"
-            value="₭ 51"
-            isPositive={false}
-            indentLevel={1}
-            minkaId="recoleta"
-          />
-          
-          {/* Pescadores - Child of Argentina */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Fish size={22} className="text-blue-700" />
-              </div>
-            }
-            title="PESCADORES"
-            subtitle="85 miembros"
-            value="₭ 22"
-            isPositive={true}
-            indentLevel={1}
-            minkaId="pescadores"
-          />
-          
-          {/* Atuneros - Child of Pescadores */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Fish size={20} className="text-blue-600" />
-              </div>
-            }
-            title="Atuneros"
-            subtitle="12 miembros"
-            value="₭ 100"
-            isPositive={true}
-            indentLevel={2}
-            minkaId="atuneros"
-          />
-          
-          {/* New parent Minka: Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <span className="text-purple-700 font-bold text-lg">CP</span>
-              </div>
-            }
-            title="CAUSAS POPULARES"
-            subtitle="320 miembros"
-            value="₭ 75"
-            isPositive={false}
-            indentLevel={0}
-            minkaId="causas-populares"
-          />
-          
-          {/* Ambientalismo - Child of Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-xl">
-                🌱
-              </div>
-            }
-            title="Ambientalismo"
-            subtitle="185 miembros"
-            value="₭ 40"
-            isPositive={false}
-            indentLevel={1}
-            minkaId="ambientalismo"
-          />
-          
-          {/* Networkismo - Child of Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl">
-                🌐
-              </div>
-            }
-            title="Networkismo"
-            subtitle="135 miembros"
-            value="₭ 35"
-            isPositive={true}
-            indentLevel={1}
-            minkaId="networkismo"
-          />
-
           {/* Total */}
           <ListItem 
             title="TOTAL"
-            value="₭ 6"
+            value={`₭ ${calculateTotalBalance().toFixed(0)}`}
             isPositive={true}
             isTotal={true}
           />
@@ -281,3 +288,4 @@ export default function HomeScreen() {
     </>
   );
 }
+

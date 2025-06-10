@@ -1,3 +1,4 @@
+// src/components/ui/ActionRow.jsx - Updated version
 "use client";
 
 import React from 'react';
@@ -22,7 +23,7 @@ export default function ActionRow({
     if (onClick) {
       onClick();
     } else if (actionId) {
-      router.push(`/${actionId.toLowerCase()}`);
+      router.push(`/action/${actionId}`); // Updated to use dynamic route
     }
   };
 
@@ -66,3 +67,4 @@ export default function ActionRow({
     </div>
   );
 }
+

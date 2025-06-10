@@ -1,0 +1,172 @@
+{
+  "actions": [
+    {
+      "id": "emprender-viaje",
+      "nombre": "Emprender viaje",
+      "resumen": "Salir de pesca con barco mediano a mar abierto",
+      "valoracion": "+₭500",
+      "alcance": "Pescadores",
+      "createdAt": "2025-01-15T10:00:00Z",
+      "createdBy": "juan.mk"
+    },
+    {
+      "id": "vender-pescado",
+      "nombre": "Vender pescado",
+      "resumen": "Comercializar la pesca del día en el mercado local",
+      "valoracion": "⇆ 20%",
+      "alcance": "Pescadores",
+      "createdAt": "2025-01-14T15:30:00Z",
+      "createdBy": "vanna.pescadora"
+    },
+    {
+      "id": "pescar-trucha-bebe",
+      "nombre": "Pescar trucha bebé",
+      "resumen": "Perjudicar la sustentabilidad del ecosistema marino",
+      "valoracion": "-₭200",
+      "alcance": "Global",
+      "createdAt": "2025-01-13T09:15:00Z",
+      "createdBy": "maria.ambientalista"
+    },
+    {
+      "id": "plantar-arbol",
+      "nombre": "Plantar árbol",
+      "resumen": "Plantar un árbol nativo en espacio público",
+      "valoracion": "+₭50",
+      "alcance": "Ambientalismo",
+      "createdAt": "2024-11-20T10:00:00Z",
+      "createdBy": "maria.ambientalista"
+    },
+    {
+      "id": "reparar-auto",
+      "nombre": "Reparar auto",
+      "resumen": "Realizar reparación mecánica de vehículo",
+      "valoracion": "⇆ 70%",
+      "alcance": "Automovilistas",
+      "createdAt": "2024-10-15T14:00:00Z",
+      "createdBy": "german.mecanico"
+    },
+    {
+      "id": "dar-bicicleta",
+      "nombre": "Dar bicicleta",
+      "resumen": "Regalar o donar una bicicleta funcional",
+      "valoracion": "+₭500",
+      "alcance": "Pymes argentinas",
+      "createdAt": "2024-09-20T11:00:00Z",
+      "createdBy": "system"
+    }
+  ],
+  "actionDetails": {
+    "emprender-viaje": {
+      "id": "emprender-viaje",
+      "name": "Emprender viaje",
+      "description": "Salir de pesca con barco mediano a mar abierto",
+      "fullDescription": "# Emprender viaje de pesca\n\n## Descripción\nEsta acción consiste en organizar y emprender un viaje de pesca en mar abierto utilizando una embarcación mediana.\n\n## Requisitos\n- Embarcación pesquera de más de 8 metros\n- Tripulación de 8 pescadores con experiencia\n- Salir de Puerto Alegro o Río de La Plata\n\n## Evidencia requerida\nPara demostrar que esta acción sucedió, se necesita:\n- Foto del barco saliendo del puerto\n- Lista de tripulación firmada\n- Coordenadas GPS del viaje\n- Registro de pesca obtenida",
+      "appliesTo": ["pescadores"],
+      "currentValuation": "+₭12",
+      "medianValuation": "+₭10",
+      "totalImpact": "+₭500",
+      "scope": "pescadores",
+      "scopeIcon": "Fish",
+      "icon": "MapPin",
+      "details": {
+        "ubicacion": [
+          "Salir de Puerto Alegro o Río de La Plata",
+          "Embarcación pesquera de más de 8 metros",
+          "Tripulación de 8 pescadores con experiencia"
+        ],
+        "consideraciones": [
+          "Respetar las zonas de pesca autorizadas"
+        ]
+      },
+      "recentCases": [
+        { "name": "Juan", "time": "11:36", "date": "10/2/2025", "value": "₭300", "isPositive": true },
+        { "name": "Vanna", "time": "10:02", "date": "11/1/2025", "value": "₭200", "isPositive": true },
+        { "name": "Juan", "time": "10:00", "date": "25/02/2023", "value": "₭10", "isPositive": true }
+      ]
+    },
+    "vender-pescado": {
+      "id": "vender-pescado",
+      "name": "Vender pescado",
+      "description": "Comercializar la pesca del día en el mercado local",
+      "fullDescription": "# Venta de pescado\n\n## Descripción\nComercialización de productos pesqueros frescos en mercados locales o puntos de venta autorizados.\n\n## Condiciones\n- Pescado debe ser fresco (menos de 24 horas)\n- Cumplir con normativas sanitarias\n- Registro de venta con comprobante\n\n## Evidencia requerida\n- Foto del puesto de venta\n- Comprobantes de venta\n- Certificado de frescura del producto",
+      "appliesTo": ["pescadores"],
+      "currentValuation": "⇆ 20%",
+      "medianValuation": "⇆ 18%",
+      "totalImpact": "⇆ 20%",
+      "scope": "pescadores",
+      "scopeIcon": "Fish",
+      "icon": "ShoppingBag",
+      "details": {
+        "condiciones": [
+          "Pescado fresco (menos de 24 horas)",
+          "Cumplir normativas sanitarias",
+          "Registro de venta con comprobante"
+        ]
+      },
+      "recentCases": []
+    },
+    "pescar-trucha-bebe": {
+      "id": "pescar-trucha-bebe",
+      "name": "Pescar trucha bebé",
+      "description": "Perjudicar la sustentabilidad del ecosistema marino",
+      "fullDescription": "# Pesca de trucha bebé\n\n## Descripción\nEsta acción perjudicial consiste en pescar truchas de menos de 5 cm de largo, afectando gravemente la sustentabilidad del ecosistema acuático.\n\n## Impacto negativo\n- Reduce la población futura de truchas\n- Afecta la cadena alimentaria\n- Va contra las regulaciones pesqueras\n\n## Evidencia requerida\nPara reportar esta acción se necesita:\n- Foto clara de las truchas pescadas con medida visible\n- Ubicación GPS donde ocurrió la pesca\n- Testigos presenciales si los hay\n- Hora y fecha del incidente",
+      "appliesTo": ["global"],
+      "currentValuation": "-₭200",
+      "medianValuation": "-₭180",
+      "totalImpact": "-₭20000",
+      "scope": "global",
+      "scopeIcon": "Globe",
+      "icon": "Baby",
+      "details": {
+        "impacto": [
+          "Reduce la población futura",
+          "Afecta la cadena alimentaria",
+          "Contra regulaciones pesqueras"
+        ]
+      },
+      "recentCases": []
+    },
+    "reparar-auto": {
+      "id": "reparar-auto",
+      "name": "Reparar auto",
+      "description": "Realizar reparación mecánica de vehículo",
+      "fullDescription": "# Reparación de auto\n\n## Descripción\nRealizar trabajos de mantenimiento o reparación mecánica en vehículos propios o de otros miembros de la comunidad.\n\n## Requisitos\n- Conocimientos mecánicos comprobables\n- Herramientas adecuadas\n- Repuestos de calidad\n\n## Evidencia requerida\n- Fotos del vehículo antes y después\n- Detalle de las reparaciones realizadas\n- Factura o comprobante de repuestos",
+      "appliesTo": ["automovilistas"],
+      "currentValuation": "⇆ 70%",
+      "medianValuation": "⇆ 65%",
+      "totalImpact": "⇆ 70%",
+      "scope": "automovilistas",
+      "scopeIcon": "Car",
+      "icon": "Wrench",
+      "details": {
+        "condiciones": [
+          "Trabajo realizado con garantía",
+          "Uso de repuestos de calidad",
+          "Precio justo por el servicio"
+        ]
+      },
+      "recentCases": []
+    },
+    "dar-bicicleta": {
+      "id": "dar-bicicleta",
+      "name": "Dar bicicleta",
+      "description": "Regalar o donar una bicicleta funcional",
+      "fullDescription": "# Donación de bicicleta\n\n## Descripción\nRegalar o donar una bicicleta en buen estado funcional a alguien que la necesite.\n\n## Condiciones\n- Bicicleta en estado funcional\n- Frenos y cambios funcionando\n- Sin daños estructurales\n\n## Evidencia requerida\n- Foto de la bicicleta\n- Identificación del receptor\n- Acta de donación o entrega",
+      "appliesTo": ["pymes-argentinas"],
+      "currentValuation": "+₭500",
+      "medianValuation": "+₭450",
+      "totalImpact": "+₭25000",
+      "scope": "pymes-argentinas",
+      "scopeIcon": "Factory",
+      "icon": "Bike",
+      "details": {
+        "consideraciones": [
+          "Promover el transporte sustentable",
+          "Ayudar a la movilidad laboral",
+          "Reducir la huella de carbono"
+        ]
+      },
+      "recentCases": []
+    }
+  }
+}

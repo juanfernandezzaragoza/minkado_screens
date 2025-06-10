@@ -1,0 +1,28 @@
+{
+  "pacts": [
+    {
+      "id": "1",
+      "name": "Fondo común pescadores",
+      "actionId": "vender-pescado",
+      "creatorId": "2",
+      "participantIds": ["1", "2", "3", "4"],
+      "transferDirection": "give",
+      "transferType": "percentage",
+      "transferAmount": 20,
+      "status": "active",
+      "createdAt": "2024-06-15T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "name": "Apoyo mutuo mecánico",
+      "actionId": "reparar-auto",
+      "creatorId": "5",
+      "participantIds": ["1", "5", "7"],
+      "transferDirection": "give",
+      "transferType": "percentage",
+      "transferAmount": 70,
+      "status": "active",
+      "createdAt": "2024-08-20T14:30:00Z"
+    }
+  ]
+}

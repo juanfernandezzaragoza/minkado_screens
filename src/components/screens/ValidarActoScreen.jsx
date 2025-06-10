@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, AlertTriangle, User, FileText, Calendar, MapPin } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { getReports, getUserById, getActionById, validateReport } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function ValidarActoScreen() {
   const router = useRouter();
@@ -20,24 +20,38 @@ export default function ValidarActoScreen() {
 
   // Load pending reports on component mount
   useEffect(() => {
-    const reports = getReports().filter(report => report.status === 'pending');
-    setPendingReports(reports);
-    
-    if (reports.length > 0) {
-      loadReport(reports[0], 0);
-    }
+    loadPendingReports();
   }, []);
 
+  const loadPendingReports = async () => {
+    try {
+      const reports = await dataService.getPendingReports();
+      setPendingReports(reports);
+      
+      if (reports.length > 0) {
+        loadReport(reports[0], 0);
+      }
+    } catch (error) {
+      console.error('Error loading pending reports:', error);
+    }
+  };
+
   // Load a specific report with its related data
-  const loadReport = (report, index) => {
-    const actor = getUserById(report.actorId);
-    const action = getActionById(report.actionId);
-    
-    setCurrentReport(report);
-    setCurrentActor(actor);
-    setCurrentAction(action);
-    setCurrentIndex(index);
-    setDecision(null);
+  const loadReport = async (report, index) => {
+    try {
+      const [actor, action] = await Promise.all([
+        dataService.getUserById(report.actorId),
+        dataService.getActionById(report.actionId)
+      ]);
+      
+      setCurrentReport(report);
+      setCurrentActor(actor);
+      setCurrentAction(action);
+      setCurrentIndex(index);
+      setDecision(null);
+    } catch (error) {
+      console.error('Error loading report details:', error);
+    }
   };
 
   // Handle validation decision
@@ -47,11 +61,8 @@ export default function ValidarActoScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Validate the report
-      validateReport(currentReport.id, isValid, '1'); // Current user Juan as validator
+      await dataService.validateReport(currentReport.id, isValid, '1'); // Current user Juan as validator
       
       setDecision(isValid);
       setShowSuccess(true);
@@ -221,7 +232,7 @@ export default function ValidarActoScreen() {
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-              <MarkdownViewer content={currentAction.detalles} />
+              <MarkdownViewer content={currentAction.detalles || `# ${currentAction.nombre}\n\n${currentAction.resumen}`} />
             </div>
           </div>
         </Card>
@@ -237,7 +248,7 @@ export default function ValidarActoScreen() {
             </div>
             
             <div className="text-xs text-gray-500 mb-3">
-              Reportado por {getUserById(currentReport.reporterId)?.name || 'Usuario desconocido'} el {formatDate(currentReport.createdAt)}
+              Reportado el {formatDate(currentReport.createdAt)}
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-80 overflow-y-auto">

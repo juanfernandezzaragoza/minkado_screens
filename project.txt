@@ -1,10 +1,13 @@
 ﻿=== FILE STRUCTURE ===
 
+src/app/action/[actionId]/page.js
 src/app/crear-minka/page.js
+src/app/debug/page.js
 src/app/describir-accion/page.js
 src/app/emprender-viaje/page.js
 src/app/globals.css
 src/app/layout.js
+src/app/minka/[minkaId]/page.js
 src/app/mis-movimientos/page.js
 src/app/pactar/page.js
 src/app/page.js
@@ -14,10 +17,12 @@ src/app/transferir/page.js
 src/app/validar-acto/page.js
 src/app/valorar-accion/page.js
 src/components/layouts/AppLayout.jsx
+src/components/screens/ActionDetailScreen.jsx
 src/components/screens/CrearMinkaScreen.jsx
 src/components/screens/DescribirAccionScreen.jsx
 src/components/screens/EmprenderViajeScreen.jsx
 src/components/screens/HomeScreen.jsx
+src/components/screens/MinkaDetailScreen.jsx
 src/components/screens/MisMovimientosScreen.jsx
 src/components/screens/PactarScreen.jsx
 src/components/screens/PescadoresDetailScreen.jsx
@@ -42,10 +47,44 @@ src/components/ui/MinkaListItem.jsx
 src/components/ui/MovementItem.jsx
 src/components/ui/SectionTitle.jsx
 src/components/ui/ValuationChart.jsx
-src/data/mockData.js
+src/data/index.js
+src/services/dataservice.js
 src/styles/theme.js
+src/utils/navigation.js
 
 === FILE CONTENTS ===
+
+//src/app/action/[actionId]/page.js
+
+import ActionDetailScreen from '@/components/screens/ActionDetailScreen';
+import AppLayout from '@/components/layouts/AppLayout';
+import { dataService } from '@/services/dataService';
+
+export default async function ActionPage({ params }) {
+  const { actionId } = params;
+  
+  // Fetch the complete action details
+  const action = await dataService.getAction(actionId);
+  
+  // Handle not found
+  if (!action) {
+    return (
+      <AppLayout showBackButton={true}>
+        <div className="m-4 text-center">
+          <h1 className="text-xl font-bold text-gray-800">Acción no encontrada</h1>
+          <p className="text-gray-600 mt-2">La acción que buscás no existe.</p>
+        </div>
+      </AppLayout>
+    );
+  }
+  
+  return (
+    <AppLayout showBackButton={true}>
+      <ActionDetailScreen action={action} />
+    </AppLayout>
+  );
+}
+
 
 //src/app/crear-minka/page.js
 
@@ -58,6 +97,57 @@ export default function CrearMinkaPage() {
     <AppLayout showBackButton={true}>
       <CrearMinkaScreen />
     </AppLayout>
+  );
+}
+
+
+//src/app/debug/page.js
+
+// src/app/debug/page.js
+import { dataService } from '@/services/dataService';
+import { mockActionDetails } from '@/data';
+
+export default async function DebugPage() {
+  // Test direct import
+  const directImport = mockActionDetails;
+  
+  // Test dataService
+  const actionFromService = await dataService.getAction('emprender-viaje');
+  
+  // Get all actions
+  const allActions = await dataService.getActions();
+  
+  return (
+    <div className="p-8 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Debug Page</h1>
+      
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Direct Import Test</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-auto">
+          mockActionDetails exists: {directImport ? 'YES' : 'NO'}
+          {'\n'}
+          Keys: {directImport ? Object.keys(directImport).join(', ') : 'N/A'}
+        </pre>
+      </section>
+      
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">DataService Test</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-auto">
+          Action from service: {actionFromService ? 'FOUND' : 'NOT FOUND'}
+          {'\n'}
+          {actionFromService && JSON.stringify(actionFromService, null, 2)}
+        </pre>
+      </section>
+      
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">All Actions</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-auto">
+          Total actions: {allActions.length}
+          {'\n'}
+          Action IDs: {allActions.map(a => a.id).join(', ')}
+        </pre>
+      </section>
+    </div>
   );
 }
 
@@ -174,6 +264,46 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
+
+
+//src/app/minka/[minkaId]/page.js
+
+import MinkaDetailScreen from '@/components/screens/MinkaDetailScreen';
+import AppLayout from '@/components/layouts/AppLayout';
+import { dataService } from '@/services/dataService';
+
+export default async function MinkaPage({ params }) {
+  const { minkaId } = params;
+  
+  // Fetch minka data
+  const minka = await dataService.getMinka(minkaId);
+  const actions = await dataService.getMinkaActions(minkaId);
+  const subMinkas = await dataService.getSubMinkas(minkaId);
+  
+  // Handle not found
+  if (!minka) {
+    return (
+      <AppLayout showBackButton={true}>
+        <div className="m-4 text-center">
+          <h1 className="text-xl font-bold text-gray-800">Minka no encontrada</h1>
+          <p className="text-gray-600 mt-2">La minka que buscás no existe.</p>
+        </div>
+      </AppLayout>
+    );
+  }
+  
+  return (
+    <AppLayout showBackButton={true}>
+      <MinkaDetailScreen 
+        minka={minka}
+        actions={actions}
+        subMinkas={subMinkas}
+      />
+    </AppLayout>
+  );
+}
+
 
 
 
@@ -309,6 +439,289 @@ export default function AppLayout({ children, showBackButton = false }) {
 
 
 
+//src/components/screens/ActionDetailScreen.jsx
+
+// src/components/screens/ActionDetailScreen.jsx
+"use client";
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { 
+  Fish, 
+  MapPin, 
+  ShoppingBag, 
+  Baby, 
+  Globe, 
+  Users, 
+  Heart,
+  Leaf,
+  Car,
+  Briefcase,
+  Home,
+  ArrowLeftRight
+} from 'lucide-react';
+import Card from '@/components/ui/Card';
+import SectionTitle from '@/components/ui/SectionTitle';
+import CaseItem from '@/components/ui/CaseItem';
+import ValuationChart from '@/components/ui/ValuationChart';
+import MarkdownViewer from '@/components/shared/MarkdownViewer';
+
+// Extended icon mapping for all possible icons
+const iconMap = {
+  Fish: Fish,
+  MapPin: MapPin,
+  ShoppingBag: ShoppingBag,
+  Baby: Baby,
+  Globe: Globe,
+  Users: Users,
+  Heart: Heart,
+  Leaf: Leaf,
+  Car: Car,
+  Briefcase: Briefcase,
+  Home: Home,
+  ArrowLeftRight: ArrowLeftRight,
+};
+
+export default function ActionDetailScreen({ action }) {
+  const router = useRouter();
+  
+  // Get the appropriate icons
+  const ActionIcon = iconMap[action.icon] || MapPin;
+  const ScopeIcon = action.scope === 'global' ? Globe : (iconMap[action.scopeIcon] || Fish);
+  
+  // Parse the valuation to determine color
+  const getValuationColor = (valuation) => {
+    if (!valuation) return 'text-gray-600';
+    if (valuation.startsWith('+')) return 'text-green-600';
+    if (valuation.startsWith('-')) return 'text-red-600';
+    return 'text-gray-600'; // For exchange types like "⇆ 20%"
+  };
+
+  return (
+    <>
+      {/* Action Description Card */}
+      <div className="m-4">
+        <Card>
+          <div className="p-5">
+            <h1 className="text-xl font-bold text-gray-800 mb-3">{action.name}</h1>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {action.description}
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Applies To Section */}
+      <div className="px-4 pb-4">
+        <Card>
+          <div className="p-4 flex items-center">
+            <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center mr-3">
+              <ScopeIcon size={16} className={action.scope === 'global' ? 'text-green-600' : 'text-blue-700'} />
+            </div>
+            <span className="text-gray-800 font-medium">
+              Aplica a {action.scope === 'global' ? 'Todos' : action.appliesTo?.join(', ') || 'Comunidad'}
+            </span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Current Valuation - Only show if it's a karma value (not exchange) */}
+      {!action.currentValuation?.includes('⇆') && (
+        <div className="px-4 pb-4">
+          <Card className="p-4">
+            <ValuationChart 
+              title="Valoración actual"
+              currentValue={action.currentValuation}
+              avgValue={action.medianValuation}
+              totalImpact={action.totalImpact}
+              showValuationInfo={true}
+              actionId={action.id}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* Exchange Information - Only show for exchange type actions */}
+      {action.currentValuation?.includes('⇆') && (
+        <div className="px-4 pb-4">
+          <Card className="p-4">
+            <div className="flex items-center mb-3">
+              <ArrowLeftRight size={20} className="text-purple-600 mr-2" />
+              <h3 className="font-medium text-gray-800">Intercambio automático</h3>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <p className="text-purple-800">
+                Esta acción activa un intercambio de <strong>{action.currentValuation}</strong> entre los participantes del pacto.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Time-based Valuation - Only show if not exchange type */}
+      {!action.currentValuation?.includes('⇆') && (
+        <div className="px-4 pb-4">
+          <Card className="p-4">
+            <ValuationChart 
+              title="Valoración en el tiempo"
+              showTimeChart={true}
+              showValuationInfo={false}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* Recent Cases Section */}
+      {action.recentCases && action.recentCases.length > 0 && (
+        <>
+          <SectionTitle 
+            title="Últimos casos" 
+            actionText="Ver todos" 
+            onAction={() => console.log('Ver todos casos')} 
+          />
+
+          <div className="px-4 pb-4">
+            <Card>
+              {action.recentCases.map((caseItem, index) => (
+                <CaseItem 
+                  key={index}
+                  name={caseItem.name}
+                  time={caseItem.time}
+                  date={caseItem.date}
+                  value={caseItem.value}
+                  isPositive={caseItem.isPositive}
+                />
+              ))}
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* Full Description Section */}
+      {action.fullDescription && (
+        <>
+          <SectionTitle title="Descripción completa" />
+          
+          <div className="px-4 pb-4">
+            <Card>
+              <div className="p-5">
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownViewer content={action.fullDescription} />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* Details Section */}
+      {action.details && (
+        <>
+          <SectionTitle title="Detalles" />
+
+          <div className="px-4 pb-6">
+            <Card>
+              <div className="p-5">
+                {/* Ubicación */}
+                {action.details.ubicacion && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-800 mb-2">Ubicación</h4>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                      {action.details.ubicacion.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Consideraciones */}
+                {action.details.consideraciones && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-800 mb-2">Consideraciones</h4>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                      {action.details.consideraciones.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Condiciones */}
+                {action.details.condiciones && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-800 mb-2">Condiciones</h4>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                      {action.details.condiciones.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Impacto */}
+                {action.details.impacto && (
+                  <div>
+                    <h4 className="font-medium text-gray-800 mb-2">Impacto</h4>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                      {action.details.impacto.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* Action Buttons */}
+      <div className="px-4 pb-6 space-y-3">
+        {/* Report this action */}
+        <button 
+          onClick={() => router.push(`/reportar-acto?action=${action.id}`)}
+          className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+        >
+          Reportar que alguien hizo esta acción
+        </button>
+        
+        {/* Valorate this action - only if not exchange type */}
+        {!action.currentValuation?.includes('⇆') && (
+          <button 
+            onClick={() => router.push(`/valorar-accion?action=${action.id}`)}
+            className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+          >
+            Cambiar mi valoración
+          </button>
+        )}
+        
+        {/* Create pact - only for exchange type actions */}
+        {action.currentValuation?.includes('⇆') && (
+          <button 
+            onClick={() => router.push(`/pactar?action=${action.id}`)}
+            className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+          >
+            Crear pacto con esta acción
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+
 //src/components/screens/CrearMinkaScreen.jsx
 
 "use client";
@@ -319,7 +732,7 @@ import { CheckCircle, AlertCircle, User, X, ChevronLeft, Fish, Users, Briefcase,
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, mockUsers } from '@/data/mockData';
+import { searchUsers, mockUsers } from '@/data';
 
 export default function CrearMinkaScreen() {
   const router = useRouter();
@@ -974,7 +1387,7 @@ import { CheckCircle, AlertCircle } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
-import { saveAction } from '@/data/mockData';
+import { saveAction } from '@/data';
 
 export default function DescribirAccionScreen() {
   const router = useRouter();
@@ -1352,11 +1765,11 @@ export default function EmprenderViajeScreen() {
 
 //src/components/screens/HomeScreen.jsx
 
-"use client"; // This is needed for client-side interactivity
+// src/components/screens/HomeScreen.jsx - Updated version
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Add this import
-
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, 
   FileText, 
@@ -1373,7 +1786,11 @@ import {
   ArrowUp,
   ArrowRight,
   ArrowDown,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Users,
+  Globe,
+  Heart,
+  // Import more icons as needed
 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import ActionButton from '@/components/ui/ActionButton';
@@ -1381,14 +1798,121 @@ import ActionItem from '@/components/ui/ActionItem';
 import SectionTitle from '@/components/ui/SectionTitle';
 import ListItem from '@/components/ui/ListItem';
 import { theme } from '@/styles/theme';
+import { dataService } from '@/services/dataService';
+
+// Icon mapping
+const iconMap = {
+  Fish: Fish,
+  Users: Users,
+  Globe: Globe,
+  Heart: Heart,
+  // Add more mappings as needed
+};
 
 export default function HomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [userMinkas, setUserMinkas] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  
+  useEffect(() => {
+    loadUserData();
+  }, []);
+  
+  const loadUserData = async () => {
+    try {
+      const [user, minkas] = await Promise.all([
+        dataService.getCurrentUser(),
+        dataService.getUserMinkas('1') // Current user ID
+      ]);
+      
+      setUserData(user);
+      setUserMinkas(organizeMinkasHierarchy(minkas));
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Organize minkas in hierarchy for display
+  const organizeMinkasHierarchy = (minkas) => {
+    const organized = [];
+    const minkaMap = {};
+    
+    // Create map
+    minkas.forEach(minka => {
+      minkaMap[minka.id] = { ...minka, children: [] };
+    });
+    
+    // Build hierarchy
+    minkas.forEach(minka => {
+      if (!minka.parentId) {
+        organized.push(minkaMap[minka.id]);
+      } else if (minkaMap[minka.parentId]) {
+        minkaMap[minka.parentId].children.push(minkaMap[minka.id]);
+      }
+    });
+    
+    return organized;
+  };
+  
+  // Calculate total balance
+  const calculateTotalBalance = () => {
+    return userMinkas.reduce((total, minka) => {
+      const minkaBalance = parseFloat(minka.balance.replace('₭', '').trim());
+      const childrenBalance = minka.children.reduce((childTotal, child) => {
+        return childTotal + parseFloat(child.balance.replace('₭', '').trim());
+      }, 0);
+      return total + minkaBalance + childrenBalance;
+    }, 0);
+  };
   
   const toggleBalanceVisibility = () => {
     setIsBalanceVisible(!isBalanceVisible);
   };
+  
+  const renderMinkaItem = (minka, indentLevel = 0) => {
+    const MinkaIcon = iconMap[minka.icon] || Users;
+    const items = [];
+    
+    // Add the minka itself
+    items.push(
+      <ListItem 
+        key={minka.id}
+        icon={
+          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+            <MinkaIcon size={22} className={minka.iconColor} />
+          </div>
+        }
+        title={minka.name}
+        subtitle={`${minka.members} miembros`}
+        value={minka.balance}
+        isPositive={minka.isPositive}
+        indentLevel={indentLevel}
+        minkaId={minka.id}
+        onClick={() => router.push(`/minka/${minka.id}`)}
+      />
+    );
+    
+    // Add children
+    if (minka.children && minka.children.length > 0) {
+      minka.children.forEach(child => {
+        items.push(...renderMinkaItem(child, indentLevel + 1));
+      });
+    }
+    
+    return items;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1397,7 +1921,7 @@ export default function HomeScreen() {
         <Card>
           <div className="p-5">
             <div className="flex justify-between items-start mb-4">
-              <div className="text-gray-500 text-sm">Cuenta: juan.mk</div>
+              <div className="text-gray-500 text-sm">Cuenta: {userData?.username}</div>
               <div 
                 className="text-sm text-blue-600 cursor-pointer"
                 onClick={() => router.push('/mis-movimientos')}
@@ -1409,8 +1933,12 @@ export default function HomeScreen() {
             <div className="flex items-baseline mb-4">
               {isBalanceVisible ? (
                 <>
-                  <span className="text-3xl font-bold mr-1">₭ 26,950</span>
-                  <span className="text-lg text-gray-500 self-start">81</span>
+                  <span className="text-3xl font-bold mr-1">
+                    ₭ {userData?.balance.toLocaleString('es-AR')}
+                  </span>
+                  <span className="text-lg text-gray-500 self-start">
+                    {(userData?.balance % 1).toFixed(2).substring(2)}
+                  </span>
                 </>
               ) : (
                 <span className="text-3xl font-bold">₭ ••••••</span>
@@ -1425,7 +1953,7 @@ export default function HomeScreen() {
             
             <div className="flex justify-center items-center text-xs">
               <ArrowUpCircle size={14} className="text-green-500 mr-1" />
-              <div className="text-green-600 font-medium">₭ 25</div>
+              <div className="text-green-600 font-medium">₭ {userData?.lastChange || 0}</div>
               <div className="ml-1 text-gray-500">desde la última vez</div>
             </div>
           </div>
@@ -1512,121 +2040,13 @@ export default function HomeScreen() {
       {/* Minka List in Card */}
       <div className="px-4 pb-6">
         <Card>
-          {/* Argentina - Parent community */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden">
-                <div className="absolute w-8 h-8 flex flex-col">
-                  <div className="flex-1 bg-blue-500"></div>
-                  <div className="flex-1 bg-white flex items-center justify-center">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  </div>
-                  <div className="flex-1 bg-blue-500"></div>
-                </div>
-              </div>
-            }
-            title="ARGENTINA"
-            subtitle="2,000 miembros"
-            value="₭ 36"
-            isPositive={false}
-            indentLevel={0}
-            minkaId="argentina"
-          />
+          {/* Render hierarchical minkas */}
+          {userMinkas.map(minka => renderMinkaItem(minka))}
           
-          {/* Recoleta - Child of Argentina */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center text-xl">
-                😊
-              </div>
-            }
-            title="RECOLETA"
-            subtitle="42 miembros"
-            value="₭ 51"
-            isPositive={false}
-            indentLevel={1}
-            minkaId="recoleta"
-          />
-          
-          {/* Pescadores - Child of Argentina */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Fish size={22} className="text-blue-700" />
-              </div>
-            }
-            title="PESCADORES"
-            subtitle="85 miembros"
-            value="₭ 22"
-            isPositive={true}
-            indentLevel={1}
-            minkaId="pescadores"
-          />
-          
-          {/* Atuneros - Child of Pescadores */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Fish size={20} className="text-blue-600" />
-              </div>
-            }
-            title="Atuneros"
-            subtitle="12 miembros"
-            value="₭ 100"
-            isPositive={true}
-            indentLevel={2}
-            minkaId="atuneros"
-          />
-          
-          {/* New parent Minka: Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <span className="text-purple-700 font-bold text-lg">CP</span>
-              </div>
-            }
-            title="CAUSAS POPULARES"
-            subtitle="320 miembros"
-            value="₭ 75"
-            isPositive={false}
-            indentLevel={0}
-            minkaId="causas-populares"
-          />
-          
-          {/* Ambientalismo - Child of Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-xl">
-                🌱
-              </div>
-            }
-            title="Ambientalismo"
-            subtitle="185 miembros"
-            value="₭ 40"
-            isPositive={false}
-            indentLevel={1}
-            minkaId="ambientalismo"
-          />
-          
-          {/* Networkismo - Child of Causas populares */}
-          <ListItem 
-            icon={
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl">
-                🌐
-              </div>
-            }
-            title="Networkismo"
-            subtitle="135 miembros"
-            value="₭ 35"
-            isPositive={true}
-            indentLevel={1}
-            minkaId="networkismo"
-          />
-
           {/* Total */}
           <ListItem 
             title="TOTAL"
-            value="₭ 6"
+            value={`₭ ${calculateTotalBalance().toFixed(0)}`}
             isPositive={true}
             isTotal={true}
           />
@@ -1637,16 +2057,263 @@ export default function HomeScreen() {
 }
 
 
-//src/components/screens/MisMovimientosScreen.jsx
+
+
+//src/components/screens/MinkaDetailScreen.jsx
 
 "use client";
 
 import React from 'react';
-import { Fish, Car, Globe, User, Factory } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { 
+  LogOut,
+  UserPlus,
+  Plus,
+  // Dynamic icon imports based on icon name
+  Fish,
+  Users,
+  Globe,
+  MapPin,
+  ShoppingBag,
+  Baby
+} from 'lucide-react';
+import Card from '@/components/ui/Card';
+import ActionItem from '@/components/ui/ActionItem';
+import SectionTitle from '@/components/ui/SectionTitle';
+import ActionRow from '@/components/ui/ActionRow';
+import MinkaListItem from '@/components/ui/MinkaListItem';
+
+// Icon mapping helper
+const iconMap = {
+  Fish: Fish,
+  Users: Users,
+  Globe: Globe,
+  MapPin: MapPin,
+  ShoppingBag: ShoppingBag,
+  Baby: Baby,
+  // Add more icons as needed
+};
+
+export default function MinkaDetailScreen({ minka, actions, subMinkas }) {
+  const router = useRouter();
+  
+  const MinkaIcon = iconMap[minka.icon] || Fish;
+  
+  const handleCreateSubminka = () => {
+    router.push(`/crear-minka?parent=${minka.id}`);
+  };
+  
+  const handleInviteMember = () => {
+    // TODO: Implement invite functionality
+    console.log('Invite member to', minka.id);
+  };
+  
+  const handleLeaveMinka = () => {
+    // TODO: Implement leave functionality
+    console.log('Leave minka', minka.id);
+  };
+
+  return (
+    <>
+      {/* Minka Title Card */}
+      <div className="m-4">
+        <Card>
+          <div className="p-5">
+            <div className="flex items-center mb-3">
+              <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center mr-4">
+                <MinkaIcon size={28} className={minka.iconColor} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">{minka.name}</h1>
+              </div>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {minka.description}
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Participation Section */}
+      <div className="px-4 pb-4">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Participación</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <ActionItem 
+              icon={<LogOut size={20} className="text-gray-700" />}
+              label="Abandonar minka"
+              onClick={handleLeaveMinka}
+            />
+            <ActionItem 
+              icon={<UserPlus size={20} className="text-blue-700" />}
+              label="Invitar miembro"
+              highlight={true}
+              onClick={handleInviteMember}
+            />
+          </div>
+        </Card>
+      </div>
+
+      {/* Valued Actions Section */}
+      {actions.length > 0 && (
+        <>
+          <SectionTitle 
+            title="Acciones valoradas" 
+            actionText="Ver todas" 
+            onAction={() => console.log('Ver todas acciones')} 
+          />
+
+          <div className="px-4 pb-4">
+            <Card>
+              {actions.map((action) => {
+                const ActionIcon = iconMap[action.icon] || Fish;
+                const ScopeIcon = action.scope === 'global' ? Globe : MinkaIcon;
+                
+                return (
+                  <ActionRow 
+                    key={action.id}
+                    icon={<ActionIcon size={18} className="text-gray-600" />}
+                    title={action.name}
+                    subtitle={action.description}
+                    value={action.currentValuation}
+                    valueColor={
+                      action.currentValuation.startsWith('+') ? 'text-green-600' :
+                      action.currentValuation.startsWith('-') ? 'text-red-600' :
+                      'text-gray-600'
+                    }
+                    actionId={action.id}
+                    scopeIcon={<ScopeIcon size={14} className={action.scope === 'global' ? 'text-green-600' : minka.iconColor} />}
+                    scopeLabel={action.scope === 'global' ? 'Global' : minka.name}
+                    miVoto="-0.5₭" // TODO: Get from user data
+                    resultado="-0.7₭" // TODO: Get from calculations
+                  />
+                );
+              })}
+            </Card>
+          </div>
+
+          <div className="px-4 pb-4">
+            <button 
+              onClick={() => console.log('Ver todas las acciones')}
+              className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
+            >
+              Ver todas las acciones valoradas por {minka.name.toLowerCase()}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Sub-Minkas Section */}
+      {subMinkas.length > 0 && (
+        <>
+          <SectionTitle 
+            title={`Minkas en ${minka.name}`} 
+            actionText="Ver todas"
+            onAction={() => console.log('Ver todas las minkas')}
+          />
+
+          <div className="px-4 pb-4">
+            <Card>
+              {subMinkas.map((subMinka) => {
+                const SubMinkaIcon = iconMap[subMinka.icon] || Fish;
+                
+                return (
+                  <MinkaListItem 
+                    key={subMinka.id}
+                    icon={
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <SubMinkaIcon size={20} className={subMinka.iconColor} />
+                      </div>
+                    }
+                    title={subMinka.name}
+                    subtitle={`${subMinka.members} miembros`}
+                    value={subMinka.balance}
+                    isPositive={subMinka.isPositive}
+                    isMember={true} // TODO: Check actual membership
+                    onClick={() => router.push(`/minka/${subMinka.id}`)}
+                  />
+                );
+              })}
+              
+              {/* Create new subminka button */}
+              <div 
+                className="p-4 border-t border-gray-100 flex items-center justify-center hover:bg-gray-50 cursor-pointer"
+                onClick={handleCreateSubminka}
+              >
+                <Plus size={20} className="text-blue-600 mr-2" />
+                <span className="text-blue-600 font-medium">Crear nueva minka en {minka.name}</span>
+              </div>
+            </Card>
+          </div>
+
+          <div className="px-4 pb-6">
+            <button 
+              onClick={() => console.log('Ver todas las minkas')}
+              className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium border border-gray-300"
+            >
+              Ver todas las minkas en {minka.name.toLowerCase()}
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+
+//src/components/screens/MisMovimientosScreen.jsx
+
+// src/components/screens/MisMovimientosScreen.jsx
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Fish, Car, Globe, User, Factory, Users, Heart, Leaf, Code, Briefcase } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import MovementItem from '@/components/ui/MovementItem';
+import { dataService } from '@/services/dataService';
+
+// Icon mapping for different scopes
+const iconMap = {
+  Fish: Fish,
+  Car: Car,
+  Globe: Globe,
+  User: User,
+  Factory: Factory,
+  Users: Users,
+  Heart: Heart,
+  Leaf: Leaf,
+  Code: Code,
+  Briefcase: Briefcase
+};
 
 export default function MisMovimientosScreen() {
+  const [movements, setMovements] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadMovements();
+  }, []);
+
+  const loadMovements = async () => {
+    try {
+      // Get movements for current user (hardcoded as '1' for Juan)
+      const userMovements = await dataService.getUserMovements('1');
+      setMovements(userMovements);
+    } catch (error) {
+      console.error('Error loading movements:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Title */}
@@ -1657,113 +2324,52 @@ export default function MisMovimientosScreen() {
       {/* Movements List */}
       <div className="px-4 pb-6">
         <div className="space-y-0">
-          {/* Giving due to pooling - LEFT ARROW */}
-          <MovementItem 
-            transactionText="← 20% a Pescadores"
-            amount="30"
-            isPositive={false}
-            scopeIcon={<Fish size={14} className="text-blue-600" />}
-            scopeLabel="Pescadores"
-            scopePosition="left"
-            percentage="Por vender pescado"
-            alignment="left"
-            timestamp="10:15"
-          />
-
-          {/* Not pooling - no arrow */}
-          <MovementItem 
-            transactionText="₭30 a Rubén"
-            amount="30"
-            isPositive={false}
-            scopeIcon={<User size={14} className="text-gray-600" />}
-            scopeLabel="Particular"
-            scopePosition="left"
-            percentage="Por poner música fuerte molestando a Juan"
-            alignment="right"
-            timestamp="09:42"
-          />
-          
-          {/* Receiving due to pooling - RIGHT ARROW */}
-          <MovementItem 
-            transactionText="→ 70% de Automovilistas"
-            amount="500"
-            isPositive={true}
-            scopeIcon={<Car size={14} className="text-gray-600" />}
-            scopeLabel="Automovilistas"
-            scopePosition="left"
-            percentage="Por reparar mi auto"
-            alignment="left"
-            timestamp="14:30"
-          />
-          
-          {/* Giving due to pooling - LEFT ARROW */}
-          <MovementItem 
-            transactionText="← 70% a Germán"
-            amount="30"
-            isPositive={false}
-            scopeIcon={<Car size={14} className="text-gray-600" />}
-            scopeLabel="Automovilistas"
-            scopePosition="left"
-            percentage="Por reparar su auto"
-            alignment="right"
-            timestamp="11:20"
-          />
-          
-          {/* NEW ITEM - Pymes argentinas */}
-          <MovementItem 
-            transactionText="₭500 por dar bicicleta a Juan"
-            amount="500"
-            isPositive={true}
-            scopeIcon={<Factory size={14} className="text-purple-600" />}
-            scopeLabel="Pymes argentinas"
-            scopePosition="left"
-            percentage="Aplicable a Pymes argentinas"
-            alignment="left"
-            timestamp="12:30"
-          />
-          
-          {/* Receiving due to pooling - RIGHT ARROW */}
-          <MovementItem 
-            transactionText="→ 20% de Roberto"
-            amount="50"
-            isPositive={true}
-            scopeIcon={<Fish size={14} className="text-blue-600" />}
-            scopeLabel="Pescadores"
-            scopePosition="left"
-            percentage="Por su venta de pescado"
-            alignment="right"
-            timestamp="16:45"
-          />
-          
-          {/* Not pooling - no arrow */}
-          <MovementItem 
-            transactionText="₭500 por emprender un viaje"
-            amount="500"
-            isPositive={true}
-            scopeIcon={<Fish size={14} className="text-blue-600" />}
-            scopeLabel="Pescadores"
-            scopePosition="left"
-            percentage="Aplicable a pescadores"
-            alignment="left"
-            timestamp="08:00"
-          />
-          
-          {/* Not pooling - no arrow - FIXED NEGATIVE SIGN */}
-          <MovementItem 
-            transactionText="-₭20 por pescar trucha bebé"
-            amount="20"
-            isPositive={false}
-            scopeIcon={<Globe size={14} className="text-green-600" />}
-            scopeLabel="Global"
-            scopePosition="left"
-            percentage="Aplicable a todos"
-            alignment="left"
-            timestamp="13:55"
-          />
+          {movements.length === 0 ? (
+            <Card className="p-6 text-center">
+              <p className="text-gray-600">No hay movimientos registrados</p>
+            </Card>
+          ) : (
+            movements.map((movement) => {
+              const ScopeIcon = iconMap[movement.scopeIcon] || User;
+              
+              return (
+                <MovementItem 
+                  key={movement.id}
+                  transactionText={movement.text}
+                  amount={movement.amount.toString()}
+                  isPositive={movement.isPositive}
+                  scopeIcon={<ScopeIcon size={14} className={getScopeIconColor(movement.scopeIcon)} />}
+                  scopeLabel={movement.scopeLabel}
+                  scopePosition="left"
+                  percentage={movement.reason}
+                  alignment={movement.alignment}
+                  timestamp={movement.timestamp}
+                />
+              );
+            })
+          )}
         </div>
       </div>
     </>
   );
+}
+
+// Helper function to get icon color based on scope
+function getScopeIconColor(iconName) {
+  const colorMap = {
+    Fish: 'text-blue-600',
+    Car: 'text-gray-600',
+    Globe: 'text-green-600',
+    User: 'text-gray-600',
+    Factory: 'text-purple-600',
+    Users: 'text-purple-600',
+    Heart: 'text-red-600',
+    Leaf: 'text-green-600',
+    Code: 'text-emerald-600',
+    Briefcase: 'text-gray-600'
+  };
+  
+  return colorMap[iconName] || 'text-gray-600';
 }
 
 
@@ -1777,7 +2383,7 @@ import { CheckCircle, AlertCircle, Users, FileText, ArrowRight, ArrowLeft, Perce
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers, searchActions } from '@/data/mockData';
+import { searchUsers, searchActions } from '@/data';
 
 export default function PactarScreen() {
   const router = useRouter();
@@ -2577,7 +3183,7 @@ import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
 import MarkdownEditor from '@/components/shared/MarkdownEditor';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { searchUsers, searchActions, saveReport } from '@/data/mockData';
+import { searchUsers, searchActions, saveReport } from '@/data';
 
 export default function ReportarActoScreen() {
   const router = useRouter();
@@ -2960,7 +3566,7 @@ import { CheckCircle, AlertCircle, User, ArrowRight, Minus } from 'lucide-react'
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers } from '@/data/mockData';
+import { searchUsers } from '@/data';
 
 export default function TransferirScreen() {
   const router = useRouter();
@@ -3292,7 +3898,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, AlertTriangle, User, FileText, Calendar, MapPin } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
-import { getReports, getUserById, getActionById, validateReport } from '@/data/mockData';
+import { getReports, getUserById, getActionById, validateReport } from '@/data';
 
 export default function ValidarActoScreen() {
   const router = useRouter();
@@ -4220,6 +4826,7 @@ export default function ActionItem({ icon, label, highlight = false, onClick }) 
 
 //src/components/ui/ActionRow.jsx
 
+// src/components/ui/ActionRow.jsx - Updated version
 "use client";
 
 import React from 'react';
@@ -4244,7 +4851,7 @@ export default function ActionRow({
     if (onClick) {
       onClick();
     } else if (actionId) {
-      router.push(`/${actionId.toLowerCase()}`);
+      router.push(`/action/${actionId}`); // Updated to use dynamic route
     }
   };
 
@@ -4288,6 +4895,8 @@ export default function ActionRow({
     </div>
   );
 }
+
+
 
 
 //src/components/ui/Card.jsx
@@ -4463,6 +5072,7 @@ export default function ListItem({
 
 //src/components/ui/MinkaListItem.jsx
 
+// src/components/ui/MinkaListItem.jsx - Updated with onClick support
 import React from 'react';
 
 export default function MinkaListItem({ 
@@ -4471,13 +5081,17 @@ export default function MinkaListItem({
   subtitle, 
   value, 
   isPositive = false,
-  isMember = true
+  isMember = true,
+  onClick
 }) {
   const valueColor = isPositive ? 'text-green-500' : 'text-red-500';
   const textOpacity = isMember ? '' : 'opacity-50';
   
   return (
-    <div className={`p-4 border-b border-gray-100 flex items-center hover:bg-gray-50 last:border-b-0 ${textOpacity}`}>
+    <div 
+      className={`p-4 border-b border-gray-100 flex items-center hover:bg-gray-50 last:border-b-0 ${textOpacity} ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
       <div className="mr-3">
         {icon}
       </div>
@@ -4491,6 +5105,18 @@ export default function MinkaListItem({
     </div>
   );
 }
+
+// src/utils/navigation.js - Navigation utilities
+export const navigationUtils = {
+  goToMinka: (router, minkaId) => router.push(`/minka/${minkaId}`),
+  goToAction: (router, actionId) => router.push(`/action/${actionId}`),
+  goToCreateMinka: (router, parentId = null) => {
+    const url = parentId ? `/crear-minka?parent=${parentId}` : '/crear-minka';
+    router.push(url);
+  },
+  goToValorarAccion: (router, actionId) => router.push(`/valorar-accion?action=${actionId}`),
+  goHome: (router) => router.push('/'),
+};
 
 
 //src/components/ui/MovementItem.jsx
@@ -4910,243 +5536,92 @@ export default function ValuationChart({
 }
 
 
-//src/data/mockData.js
+//src/data/index.js
 
-// src/data/mockData.js
+import movementsData from './json/movements.json';
+import usersData from './json/users.json';
+import minkasData from './json/minkas.json';
+import actionsData from './json/actions.json';
+import reportsData from './json/reports.json';
+import pactsData from './json/pacts.json';
 
-// Mock Users Data
-export const mockUsers = [
-  { id: '1', name: 'Juan', username: 'juan.mk' },
-  { id: '2', name: 'Vanna', username: 'vanna.pescadora' },
-  { id: '3', name: 'Roberto', username: 'roberto.atun' },
-  { id: '4', name: 'Rubén', username: 'ruben.musico' },
-  { id: '5', name: 'Germán', username: 'german.mecanico' },
-  { id: '6', name: 'María', username: 'maria.ambientalista' },
-  { id: '7', name: 'Carlos', username: 'carlos.networkista' },
-];
+// Export all data arrays (same as mockData.js had)
+export const mockMovements = movementsData.movements;
+export const mockUsers = usersData.users;
+export const mockMinkas = minkasData.minkas;
+export const mockActions = actionsData.actions;
+export const mockActionDetails = actionsData.actionDetails;
+export const mockReports = reportsData.reports;
+export const mockPacts = pactsData.pacts;
+export const mockUserMinkas = usersData.userMinkas;
 
-// Mock Actions Data
-export const mockActions = [
-  {
-    id: '1',
-    nombre: 'Emprender viaje',
-    resumen: 'Salir de pesca con barco mediano a mar abierto',
-    detalles: `# Emprender viaje de pesca
-
-## Descripción
-Esta acción consiste en organizar y emprender un viaje de pesca en mar abierto utilizando una embarcación mediana.
-
-## Requisitos
-- Embarcación pesquera de más de 8 metros
-- Tripulación de 8 pescadores con experiencia
-- Salir de Puerto Alegro o Río de La Plata
-
-## Evidencia requerida
-Para demostrar que esta acción sucedió, se necesita:
-- Foto del barco saliendo del puerto
-- Lista de tripulación firmada
-- Coordenadas GPS del viaje
-- Registro de pesca obtenida`,
-    createdAt: '2025-01-15T10:00:00Z',
-    createdBy: 'juan.mk'
-  },
-  {
-    id: '2',
-    nombre: 'Vender pescado',
-    resumen: 'Comercializar la pesca del día en el mercado local',
-    detalles: `# Venta de pescado
-
-## Descripción
-Comercialización de productos pesqueros frescos en mercados locales o puntos de venta autorizados.
-
-## Condiciones
-- Pescado debe ser fresco (menos de 24 horas)
-- Cumplir con normativas sanitarias
-- Registro de venta con comprobante
-
-## Evidencia requerida
-- Foto del puesto de venta
-- Comprobantes de venta
-- Certificado de frescura del producto`,
-    createdAt: '2025-01-14T15:30:00Z',
-    createdBy: 'vanna.pescadora'
-  },
-  {
-    id: '3',
-    nombre: 'Pescar trucha bebé',
-    resumen: 'Perjudicar la sustentabilidad del ecosistema marino',
-    detalles: `# Pesca de trucha bebé
-
-## Descripción
-Esta acción perjudicial consiste en pescar truchas de menos de 5 cm de largo, afectando gravemente la sustentabilidad del ecosistema acuático.
-
-## Impacto negativo
-- Reduce la población futura de truchas
-- Afecta la cadena alimentaria
-- Va contra las regulaciones pesqueras
-
-## Evidencia requerida
-Para reportar esta acción se necesita:
-- Foto clara de las truchas pescadas con medida visible
-- Ubicación GPS donde ocurrió la pesca
-- Testigos presenciales si los hay
-- Hora y fecha del incidente`,
-    createdAt: '2025-01-13T09:15:00Z',
-    createdBy: 'maria.ambientalista'
-  }
-];
-
-// Mock Reports Data
-export const mockReports = [
-  {
-    id: '1',
-    actionId: '1', // Emprender viaje
-    actorId: '1', // Juan
-    reporterId: '2', // Vanna
-    evidencia: `# Evidencia: Juan emprendió viaje de pesca
-
-## Fecha y hora
-10 de febrero de 2025, 11:36 AM
-
-## Evidencia presentada
-- **Foto del barco**: Embarcación "Mar Azul" saliendo del Puerto Alegro
-- **Lista de tripulación**: 8 pescadores registrados y firmados
-- **Coordenadas GPS**: Lat: -34.6118, Lng: -58.3960
-- **Registro de pesca**: 300kg de pescado variado obtenido
-
-## Testigos
-- Capitán del puerto confirma la salida
-- Otros pescadores presentes en el muelle
-
-La evidencia es clara y cumple con todos los requisitos establecidos en la descripción de la acción.`,
-    status: 'pending', // pending, validated, rejected
-    createdAt: '2025-02-10T11:36:00Z',
-    validationReward: '₭50'
-  },
-  {
-    id: '2',
-    actionId: '2', // Vender pescado
-    actorId: '2', // Vanna
-    reporterId: '3', // Roberto
-    evidencia: `# Evidencia: Vanna vendió pescado
-
-## Detalles de la venta
-- **Fecha**: 11 de enero de 2025, 10:02 AM
-- **Lugar**: Mercado Central de Puerto Alegro
-- **Cantidad**: Aproximadamente 50kg de pescado fresco
-
-## Evidencia
-- Foto del puesto de venta con Vanna atendiendo
-- Comprobantes de 3 ventas realizadas
-- Certificado sanitario del pescado (menos de 12 horas de pesca)
-
-## Observaciones
-Todo el pescado se veía fresco y cumplía con las normativas. La venta fue exitosa y transparente.`,
-    status: 'validated',
-    createdAt: '2025-01-11T10:02:00Z',
-    validationReward: '₭50',
-    validatedBy: '4', // Rubén
-    validatedAt: '2025-01-11T14:30:00Z'
-  },
-  {
-  id: '3',
-  actionId: '3', // Pescar trucha bebé
-  actorId: '3', // Roberto
-  reporterId: '2', // Vanna
-  evidencia: `# Evidencia: Roberto pescó trucha bebé
-
-## Fecha y hora
-12 de febrero de 2025, 14:20 PM
-
-## Ubicación
-Río de La Plata, zona norte
-
-## Evidencia presentada
-- **Foto**: Roberto con una red llena de truchas muy pequeñas
-- **Testigo**: Vi personalmente como pescaba truchas de menos de 3cm
-- **Medición**: Las truchas medían entre 2-4cm de largo
-
-## Descripción
-Roberto estaba pescando sistemáticamente truchas bebé sin respetar las tallas mínimas.`,
-  status: 'pending',
-  createdAt: '2025-02-12T14:20:00Z',
-  validationReward: '₭50'
-},
-{
-  id: '4',
-  actionId: '1', // Emprender viaje
-  actorId: '5', // Germán
-  reporterId: '6', // María
-  evidencia: `# Evidencia: Germán emprendió viaje de pesca
-
-## Fecha y hora
-13 de febrero de 2025, 08:30 AM
-
-## Evidencia presentada
-- **Foto del barco**: Embarcación "Neptuno" saliendo del puerto
-- **Lista de tripulación**: 8 pescadores confirmados
-- **GPS**: Coordenadas registradas del viaje
-- **Catch**: 150kg de pescado obtenido
-
-## Testigos
-El capitán del puerto confirmó la salida y el regreso exitoso.`,
-  status: 'pending',
-  createdAt: '2025-02-13T08:30:00Z',
-  validationReward: '₭50'
-}
-];
-
-// Data access functions
+// Helper functions (same as mockData.js had)
 export const getUsers = () => mockUsers;
 export const getActions = () => mockActions;
 export const getReports = () => mockReports;
+export const getMinkas = () => mockMinkas;
 
 export const getUserById = (id) => mockUsers.find(user => user.id === id);
 export const getActionById = (id) => mockActions.find(action => action.id === id);
 export const getReportById = (id) => mockReports.find(report => report.id === id);
+export const getMinkaById = (id) => mockMinkas.find(minka => minka.id === id);
 
 export const searchUsers = (query) => {
-  if (!query) return mockUsers;
+  if (!query) return [];
+  const lowQuery = query.toLowerCase();
   return mockUsers.filter(user => 
-    user.name.toLowerCase().includes(query.toLowerCase()) ||
-    user.username.toLowerCase().includes(query.toLowerCase())
+    user.name.toLowerCase().includes(lowQuery) ||
+    user.username.toLowerCase().includes(lowQuery)
   );
 };
 
 export const searchActions = (query) => {
-  if (!query) return mockActions;
+  if (!query) return [];
+  const lowQuery = query.toLowerCase();
   return mockActions.filter(action => 
-    action.nombre.toLowerCase().includes(query.toLowerCase()) ||
-    action.resumen.toLowerCase().includes(query.toLowerCase())
+    action.nombre.toLowerCase().includes(lowQuery) ||
+    action.resumen.toLowerCase().includes(lowQuery)
   );
 };
 
-// Save functions (using localStorage for now)
+export const getUserMinkas = (userId) => {
+  const userMinkaIds = mockUserMinkas[userId] || [];
+  return mockMinkas.filter(minka => userMinkaIds.includes(minka.id));
+};
+
+export const getMinkaActions = (minkaId) => {
+  const minka = getMinkaById(minkaId);
+  if (!minka || !minka.actions) return [];
+  return minka.actions.map(actionId => mockActionDetails[actionId]).filter(Boolean);
+};
+
+export const getSubMinkas = (minkaId) => {
+  const minka = getMinkaById(minkaId);
+  if (!minka || !minka.subMinkas) return [];
+  return mockMinkas.filter(m => minka.subMinkas.includes(m.id));
+};
+
+// Save functions (these modify the in-memory data)
 export const saveAction = (actionData) => {
-  const actions = getActions();
   const newAction = {
     ...actionData,
-    id: (actions.length + 1).toString(),
+    id: `action-${Date.now()}`,
     createdAt: new Date().toISOString(),
-    createdBy: 'juan.mk' // Current user
+    createdBy: 'juan.mk'
   };
-  
-  // In a real app, this would be an API call
-  console.log('Saving action:', newAction);
+  mockActions.push(newAction);
   return newAction;
 };
 
 export const saveReport = (reportData) => {
-  const reports = getReports();
   const newReport = {
     ...reportData,
-    id: (reports.length + 1).toString(),
+    id: `report-${Date.now()}`,
     status: 'pending',
     createdAt: new Date().toISOString(),
     validationReward: '₭50'
   };
-  
-  console.log('Saving report:', newReport);
+  mockReports.push(newReport);
   return newReport;
 };
 
@@ -5156,13 +5631,324 @@ export const validateReport = (reportId, isValid, validatorId) => {
     report.status = isValid ? 'validated' : 'rejected';
     report.validatedBy = validatorId;
     report.validatedAt = new Date().toISOString();
-    console.log('Report validated:', report);
   }
   return report;
 };
 
+// Additional exports for compatibility with existing code
+export { mockUsers as users };
+export { mockActions as actions };
+export { mockReports as reports };
+export { mockMinkas as minkas };
+export { mockMovements as movements };
+export { mockPacts as pacts };
+
+// Default export for convenience
+export default {
+  users: mockUsers,
+  actions: mockActions,
+  reports: mockReports,
+  minkas: mockMinkas,
+  movements: mockMovements,
+  pacts: mockPacts,
+  userMinkas: mockUserMinkas,
+  actionDetails: mockActionDetails,
+  // Functions
+  getUserById,
+  getActionById,
+  getReportById,
+  getMinkaById,
+  searchUsers,
+  searchActions,
+  getUserMinkas,
+  getMinkaActions,
+  getSubMinkas,
+  saveAction,
+  saveReport,
+  validateReport
+};
 
 
+//src/services/dataservice.js
+
+// src/services/dataService.js
+import { 
+  mockUsers, 
+  mockActions, 
+  mockReports,
+  mockMinkas,
+  mockActionDetails,
+  mockMovements,
+  mockUserMinkas,
+  searchUsers as mockSearchUsers,
+  searchActions as mockSearchActions,
+  getUserMinkas as mockGetUserMinkas,
+  getMinkaActions as mockGetMinkaActions,
+  getSubMinkas as mockGetSubMinkas,
+  saveAction as mockSaveAction,
+  saveReport as mockSaveReport,
+  validateReport as mockValidateReport,
+  getUserById,
+  getActionById
+} from '@/data'; // Changed from '@/data/mockData' to '@/data'
+
+class DataService {
+  constructor(useMockData = true) {
+    this.useMockData = useMockData;
+    // In the future, initialize API client here
+  }
+
+  // Minka related methods
+  async getMinkas() {
+    if (this.useMockData) {
+      return mockMinkas;
+    }
+    // return await api.get('/minkas');
+  }
+
+  async getMinka(minkaId) {
+    if (this.useMockData) {
+      return mockMinkas.find(m => m.id === minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}`);
+  }
+
+  async getUserMinkas(userId) {
+    if (this.useMockData) {
+      return mockGetUserMinkas(userId);
+    }
+    // return await api.get(`/users/${userId}/minkas`);
+  }
+
+  async getSubMinkas(minkaId) {
+    if (this.useMockData) {
+      return mockGetSubMinkas(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/subminkas`);
+  }
+
+  // Action related methods
+  async getActions() {
+    if (this.useMockData) {
+      return mockActions;
+    }
+    // return await api.get('/actions');
+  }
+
+  async getAction(actionId) {
+    if (this.useMockData) {
+      // Return extended action details for action pages
+      return mockActionDetails[actionId] || null;
+    }
+    // return await api.get(`/actions/${actionId}`);
+  }
+
+  async getMinkaActions(minkaId) {
+    if (this.useMockData) {
+      return mockGetMinkaActions(minkaId);
+    }
+    // return await api.get(`/minkas/${minkaId}/actions`);
+  }
+
+  async searchActions(query) {
+    if (this.useMockData) {
+      return mockSearchActions(query);
+    }
+    // return await api.get(`/actions/search?q=${query}`);
+  }
+
+  // User related methods
+  async getUsers() {
+    if (this.useMockData) {
+      return mockUsers;
+    }
+    // return await api.get('/users');
+  }
+
+  async getUser(userId) {
+    if (this.useMockData) {
+      return mockUsers.find(u => u.id === userId);
+    }
+    // return await api.get(`/users/${userId}`);
+  }
+
+  async getCurrentUser() {
+    if (this.useMockData) {
+      // Hardcoded for now - Juan
+      return {
+        id: '1',
+        name: 'Juan',
+        username: 'juan.mk',
+        balance: 26950.81,
+        lastChange: 25
+      };
+    }
+    // return await api.get('/users/me');
+  }
+
+  async searchUsers(query) {
+    if (this.useMockData) {
+      return mockSearchUsers(query);
+    }
+    // return await api.get(`/users/search?q=${query}`);
+  }
+
+  // Report related methods
+  async getReports(filters = {}) {
+    if (this.useMockData) {
+      let reports = [...mockReports];
+      
+      if (filters.status) {
+        reports = reports.filter(r => r.status === filters.status);
+      }
+      
+      if (filters.actorId) {
+        reports = reports.filter(r => r.actorId === filters.actorId);
+      }
+      
+      return reports;
+    }
+    // return await api.get('/reports', { params: filters });
+  }
+
+  async createReport(reportData) {
+    if (this.useMockData) {
+      return mockSaveReport(reportData);
+    }
+    // return await api.post('/reports', reportData);
+  }
+
+  async validateReport(reportId, isValid, validatorId) {
+    if (this.useMockData) {
+      return mockValidateReport(reportId, isValid, validatorId);
+    }
+    // return await api.post(`/reports/${reportId}/validate`, { isValid, validatorId });
+  }
+
+  // Movement/Transaction methods
+  async getUserMovements(userId) {
+    if (this.useMockData) {
+      return mockMovements.filter(m => m.userId === userId);
+    }
+    // return await api.get(`/users/${userId}/movements`);
+  }
+
+  // Action creation
+  async saveAction(actionData) {
+    if (this.useMockData) {
+      return mockSaveAction(actionData);
+    }
+    // return await api.post('/actions', actionData);
+  }
+
+  // Pact related methods
+  async createPact(pactData) {
+    if (this.useMockData) {
+      const newPact = {
+        id: Date.now().toString(),
+        ...pactData,
+        status: 'proposed',
+        createdAt: new Date().toISOString()
+      };
+      // In a real implementation, we would save this to the mock data
+      return newPact;
+    }
+    // return await api.post('/pacts', pactData);
+  }
+
+  // Valuation methods
+  async getActionValuations(actionId, minkaId) {
+    if (this.useMockData) {
+      // Mock implementation
+      return {
+        userValuation: 12,
+        medianValuation: 10,
+        totalImpact: 500,
+        canModify: true
+      };
+    }
+    // return await api.get(`/actions/${actionId}/valuations/${minkaId}`);
+  }
+
+  async submitValuation(actionId, minkaId, karmaValue) {
+    if (this.useMockData) {
+      return {
+        success: true,
+        newValuation: karmaValue
+      };
+    }
+    // return await api.post(`/actions/${actionId}/valuations`, { minkaId, karmaValue });
+  }
+
+  // Transfer methods
+  async createTransfer(transferData) {
+    if (this.useMockData) {
+      const toUser = getUserById(transferData.toUserId);
+      const newMovement = {
+        id: Date.now().toString(),
+        userId: transferData.fromUserId,
+        type: 'transfer',
+        text: `₭${Math.abs(transferData.amount)} ${transferData.amount > 0 ? 'a' : 'para penalizar a'} ${toUser?.name || 'Usuario'}`,
+        amount: Math.abs(transferData.amount),
+        isPositive: false,
+        scopeIcon: 'User',
+        scopeLabel: 'Particular',
+        reason: transferData.motivo,
+        alignment: 'right',
+        timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        date: new Date().toISOString().split('T')[0],
+        fromUserId: transferData.fromUserId,
+        toUserId: transferData.toUserId
+      };
+      
+      // Add to movements array
+      mockMovements.push(newMovement);
+      
+      return {
+        success: true,
+        movement: newMovement
+      };
+    }
+    // return await api.post('/transfers', transferData);
+  }
+
+  // Additional helper methods for specific screens
+  async getActionWithDetails(actionId) {
+    if (this.useMockData) {
+      // This is used by ReportarActoScreen and ValorarAccionScreen
+      const action = getActionById(actionId);
+      const actionDetail = mockActionDetails[actionId];
+      
+      if (!action) return null;
+      
+      return {
+        ...action,
+        detalles: actionDetail?.fullDescription || `# ${action.nombre}\n\n${action.resumen}`
+      };
+    }
+    // return await api.get(`/actions/${actionId}/full`);
+  }
+
+  // Mock data for CrearMinkaScreen
+  async getUserMinkasForCreation(userId) {
+    if (this.useMockData) {
+      // Return minkas where user is member for selecting parent minka
+      const userMinkas = await this.getUserMinkas(userId);
+      return userMinkas.map(minka => ({
+        id: minka.id,
+        nombre: minka.name,
+        miembros: minka.members
+      }));
+    }
+    // return await api.get(`/users/${userId}/minkas/simple`);
+  }
+}
+
+// Export singleton instance
+export const dataService = new DataService(true); // true = use mock data
+
+// Export class for testing
+export default DataService;
 
 
 //src/styles/theme.js
@@ -5204,5 +5990,10 @@ export const theme = {
     total: 'bg-gradient-to-r from-blue-50 to-green-50',
   }
 };
+
+
+//src/utils/navigation.js
+
+
 
 

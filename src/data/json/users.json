@@ -1,0 +1,55 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Juan",
+      "username": "juan.mk",
+      "balance": 26950.81
+    },
+    {
+      "id": "2",
+      "name": "Vanna",
+      "username": "vanna.pescadora",
+      "balance": 15230.50
+    },
+    {
+      "id": "3",
+      "name": "Roberto",
+      "username": "roberto.atun",
+      "balance": 8900.00
+    },
+    {
+      "id": "4",
+      "name": "Rubén",
+      "username": "ruben.musico",
+      "balance": 12000.00
+    },
+    {
+      "id": "5",
+      "name": "Germán",
+      "username": "german.mecanico",
+      "balance": 18500.00
+    },
+    {
+      "id": "6",
+      "name": "María",
+      "username": "maria.ambientalista",
+      "balance": 22100.00
+    },
+    {
+      "id": "7",
+      "name": "Carlos",
+      "username": "carlos.networkista",
+      "balance": 19800.00
+    }
+  ],
+  "userMinkas": {
+    "1": ["argentina", "pescadores", "atuneros", "causas-populares", "ambientalismo", "networkismo"],
+    "2": ["argentina", "recoleta", "pescadores"],
+    "3": ["argentina", "pescadores", "atuneros"],
+    "4": ["argentina", "causas-populares"],
+    "5": ["argentina", "pescadores", "agua-dulce"],
+    "6": ["argentina", "causas-populares", "ambientalismo"],
+    "7": ["argentina", "causas-populares", "networkismo"]
+  }
+}

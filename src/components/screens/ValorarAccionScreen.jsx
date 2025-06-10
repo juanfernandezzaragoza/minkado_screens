@@ -1,62 +1,43 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, AlertCircle, Fish, Users, Globe } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import MarkdownViewer from '@/components/shared/MarkdownViewer';
+import { dataService } from '@/services/dataService';
 
 export default function ValorarAccionScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const actionId = searchParams?.get('action');
   
-  // Mock data - esto vendría del backend
-  const mockValorationData = {
-    accion: {
-      id: '1',
-      nombre: 'Emprender viaje',
-      descripcion: `# Emprender viaje de pesca
-
-## Descripción
-Esta acción consiste en organizar y emprender un viaje de pesca en mar abierto utilizando una embarcación mediana.
-
-## Requisitos
-- Embarcación pesquera de más de 8 metros
-- Tripulación de 8 pescadores con experiencia
-- Salir de Puerto Alegro o Río de La Plata
-
-## Evidencia requerida
-Para demostrar que esta acción sucedió, se necesita:
-- Foto del barco saliendo del puerto
-- Lista de tripulación firmada
-- Coordenadas GPS del viaje
-- Registro de pesca obtenida`
-    },
-    minkaValorandoId: 'pescadores', // La minka que está haciendo la valoración
-    minkaValorando: {
-      id: 'pescadores',
-      nombre: 'Pescadores',
-      miembros: 85
-    },
-    minkaAfectada: {
-      id: 'pescadores', // Puede ser la misma o diferente
-      nombre: 'Pescadores',
-      miembros: 85
-    },
-    // Si fuera global:
-    // minkaAfectada: {
-    //   id: 'global',
-    //   nombre: 'Global',
-    //   miembros: 10000 // Número total de usuarios de la plataforma
-    // }
-  };
-
+  const [valorationData, setValorationData] = useState(null);
   const [karmaValue, setKarmaValue] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { accion, minkaValorando, minkaAfectada } = mockValorationData;
+  // Load valoration data on component mount
+  useEffect(() => {
+    if (actionId) {
+      loadValorationData();
+    }
+  }, [actionId]);
+
+  const loadValorationData = async () => {
+    try {
+      const data = await dataService.getValorationData(actionId);
+      setValorationData(data);
+    } catch (error) {
+      console.error('Error loading valoration data:', error);
+      setErrors({ load: 'Error al cargar los datos de la acción' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle karma input change
   const handleKarmaChange = (value) => {
@@ -98,18 +79,16 @@ Para demostrar que esta acción sucedió, se necesita:
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const valorationData = {
-        accionId: accion.id,
-        minkaValorandoId: minkaValorando.id,
-        minkaAfectadaId: minkaAfectada.id,
+      const submission = {
+        accionId: valorationData.accion.id,
+        minkaValorandoId: valorationData.minkaValorando.id,
+        minkaAfectadaId: valorationData.minkaAfectada.id,
         karmaValue: parseFloat(karmaValue),
         userId: '1' // Current user Juan
       };
       
-      console.log('Valoration saved:', valorationData);
+      const result = await dataService.submitKarmaValoration(submission);
+      console.log('Valoration saved:', result);
       setShowSuccess(true);
       
       // Navigate back after success
@@ -125,12 +104,45 @@ Para demostrar que esta acción sucedió, se necesita:
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando información de la acción...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (errors.load || !valorationData) {
+    return (
+      <div className="m-4">
+        <Card className="p-6 text-center">
+          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error al cargar</h2>
+          <p className="text-gray-600 mb-4">
+            {errors.load || 'No se pudo cargar la información de la acción'}
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
   // Calculate dynamic explanation values
   const karmaNum = parseFloat(karmaValue) || 0;
-  const totalImpact = Math.abs(karmaNum * minkaAfectada.miembros);
+  const totalImpact = Math.abs(karmaNum * valorationData.minkaAfectada.miembros);
   const isPositive = karmaNum > 0;
-  const isGlobal = minkaAfectada.id === 'global';
-  const isSameMinka = minkaValorando.id === minkaAfectada.id;
+  const isGlobal = valorationData.minkaAfectada.id === 'global';
+  const isSameMinka = valorationData.minkaValorando.id === valorationData.minkaAfectada.id;
 
   // Success state
   if (showSuccess) {
@@ -140,7 +152,7 @@ Para demostrar que esta acción sucedió, se necesita:
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Valoración enviada!</h2>
           <p className="text-gray-600 mb-4">
-            Tu valoración de <strong>{karmaValue} karma</strong> para la acción <strong>"{accion.nombre}"</strong> ha sido registrada.
+            Tu valoración de <strong>{karmaValue} karma</strong> para la acción <strong>"{valorationData.accion.nombre}"</strong> ha sido registrada.
           </p>
           <p className="text-sm text-gray-500">
             Esta valoración será aplicada cuando alguien realice esta acción.
@@ -174,10 +186,10 @@ Para demostrar que esta acción sucedió, se necesita:
             </div>
             
             <div className="mb-4">
-              <h4 className="font-bold text-gray-800 text-lg">{accion.nombre}</h4>
+              <h4 className="font-bold text-gray-800 text-lg">{valorationData.accion.nombre}</h4>
               <div className="flex items-center mt-2 text-sm text-gray-600">
                 <Users size={14} className="mr-1" />
-                <span>Valorando desde: {minkaValorando.nombre}</span>
+                <span>Valorando desde: {valorationData.minkaValorando.nombre}</span>
                 <span className="mx-2">•</span>
                 {isGlobal ? (
                   <>
@@ -187,14 +199,14 @@ Para demostrar que esta acción sucedió, se necesita:
                 ) : (
                   <>
                     <Fish size={14} className="mr-1" />
-                    <span>Afecta: {minkaAfectada.nombre}</span>
+                    <span>Afecta: {valorationData.minkaAfectada.nombre}</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-              <MarkdownViewer content={accion.descripcion} />
+              <MarkdownViewer content={valorationData.accion.descripcion} />
             </div>
           </div>
         </Card>
@@ -207,8 +219,8 @@ Para demostrar que esta acción sucedió, se necesita:
             {/* Question */}
             <div className="mb-6">
               <h3 className="font-medium text-gray-800 mb-4 text-lg">
-                ¿Cuánto te afecta que alguien {!isSameMinka && !isGlobal && `de ${minkaAfectada.nombre} `}
-                haga la acción "{accion.nombre}"?
+                ¿Cuánto te afecta que alguien {!isSameMinka && !isGlobal && `de ${valorationData.minkaAfectada.nombre} `}
+                haga la acción "{valorationData.accion.nombre}"?
               </h3>
             </div>
 
@@ -237,11 +249,11 @@ Para demostrar que esta acción sucedió, se necesita:
                 <h4 className="font-medium text-blue-800 mb-3">Estás proponiendo que:</h4>
                 <div className="text-blue-700 text-sm space-y-2">
                   <p>
-                    • Cuando alguien <strong>{!isGlobal && `de ${minkaAfectada.nombre} `}</strong>
-                    haga <strong>{accion.nombre}</strong>,
+                    • Cuando alguien <strong>{!isGlobal && `de ${valorationData.minkaAfectada.nombre} `}</strong>
+                    haga <strong>{valorationData.accion.nombre}</strong>,
                   </p>
                   <p>
-                    • Cada miembro de <strong>{minkaValorando.nombre}</strong> contribuya <strong>₭{karmaNum}</strong>
+                    • Cada miembro de <strong>{valorationData.minkaValorando.nombre}</strong> contribuya <strong>₭{karmaNum}</strong>
                   </p>
                   <p>
                     • Para <strong>{isPositive ? 'recompensarlo' : 'multarlo'}</strong> en <strong>₭{totalImpact.toLocaleString()}</strong>

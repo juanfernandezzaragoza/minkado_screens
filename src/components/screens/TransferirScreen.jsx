@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, User, ArrowRight, Minus } from 'lucide-react'
 import Card from '@/components/ui/Card';
 import FormField from '@/components/shared/FormField';
 import SearchInput from '@/components/shared/SearchInput';
-import { searchUsers } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export default function TransferirScreen() {
   const router = useRouter();
@@ -21,11 +21,16 @@ export default function TransferirScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Handle user search
-  const handleUserSearch = (query) => {
-    const results = searchUsers(query);
-    // Filter out current user (Juan)
-    const filteredResults = results.filter(user => user.id !== '1');
-    setUserSearchResults(filteredResults);
+  const handleUserSearch = async (query) => {
+    try {
+      const results = await dataService.searchUsers(query);
+      // Filter out current user (Juan)
+      const filteredResults = results.filter(user => user.id !== '1');
+      setUserSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setUserSearchResults([]);
+    }
   };
 
   const handleUserSelect = (user) => {
@@ -100,9 +105,6 @@ export default function TransferirScreen() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       const transferData = {
         fromUserId: '1', // Current user Juan
         toUserId: selectedUser.id,
@@ -111,7 +113,8 @@ export default function TransferirScreen() {
         timestamp: new Date().toISOString()
       };
       
-      console.log('Transfer saved:', transferData);
+      const result = await dataService.createTransfer(transferData);
+      console.log('Transfer saved:', result);
       setShowSuccess(true);
       
       // Navigate back after success
