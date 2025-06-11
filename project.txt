@@ -52,7 +52,7 @@ src/components/ui/MovementItem.jsx
 src/components/ui/SectionTitle.jsx
 src/components/ui/ValuationChart.jsx
 src/data/index.js
-src/services/dataservice.js
+src/services/dataService.js
 src/styles/theme.js
 src/utils/navigation.js
 
@@ -65,8 +65,9 @@ import AppLayout from '@/components/layouts/AppLayout';
 import { dataService } from '@/services/dataService';
 
 export default async function ActionPage({ params, searchParams }) {
-  const { actionId } = params;
-  const minkaId = searchParams?.minka || 'pescadores'; // Default to pescadores
+  const { actionId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const minkaId = resolvedSearchParams?.minka; //Default to pescadores
   
   // Fetch the complete action details
   const action = await dataService.getAction(actionId);
@@ -289,7 +290,7 @@ import AppLayout from '@/components/layouts/AppLayout';
 import { dataService } from '@/services/dataService';
 
 export default async function MinkaPage({ params }) {
-  const { minkaId } = params;
+  const { minkaId } = await params;
   
   // Fetch minka data
   const minka = await dataService.getMinka(minkaId);
@@ -320,32 +321,26 @@ export default async function MinkaPage({ params }) {
 }
 
 
-
-
 //src/app/minka/[minkaId]/valuations/page.js
 
 import MinkaValuationsScreen from '@/components/screens/MinkaValuationsScreen';
 import AppLayout from '@/components/layouts/AppLayout';
 
-export default function MinkaValuationsPage({ params }) {
+export default async function MinkaValuationsPage({ params }) {
+  // Await the params as required by Next.js 13+
+  const resolvedParams = await params;
+  
   // Debug: Let's see exactly what we're getting
   console.log('=== MinkaValuationsPage Debug ===');
-  console.log('Raw params:', params);
-  console.log('Params type:', typeof params);
-  console.log('Params keys:', params ? Object.keys(params) : 'no params');
-  console.log('minkaId value:', params?.minkaId);
+  console.log('Resolved params:', resolvedParams);
+  console.log('minkaId value:', resolvedParams?.minkaId);
   console.log('================================');
 
   // Show debug info on screen too
   return (
     <AppLayout showBackButton={true}>
-      <div className="m-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-        <h3 className="font-bold">Debug Info:</h3>
-        <p>Params: {JSON.stringify(params)}</p>
-        <p>MinkaId: {params?.minkaId || 'undefined'}</p>
-        <p>URL should be: /minka/pescadores/valuations</p>
-      </div>
-      <MinkaValuationsScreen params={params} />
+      
+      <MinkaValuationsScreen minkaId={resolvedParams?.minkaId} />
     </AppLayout>
   );
 }
@@ -456,10 +451,12 @@ export default function ValidarActoPage() {
 import ValorarAccionScreen from '@/components/screens/ValorarAccionScreen';
 import AppLayout from '@/components/layouts/AppLayout';
 
-export default function ValorarAccionPage() {
+export default async function ValorarAccionPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  
   return (
     <AppLayout showBackButton={true}>
-      <ValorarAccionScreen />
+      <ValorarAccionScreen searchParams={resolvedSearchParams} />
     </AppLayout>
   );
 }
@@ -2832,7 +2829,7 @@ export default function PactarScreen() {
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Pacto propuesto!</h2>
           <p className="text-gray-600 mb-4">
-            Se ha enviado la propuesta de pacto para <strong>"{selectedAction?.nombre}"</strong> a {selectedUsers.length} usuario{selectedUsers.length > 1 ? 's' : ''}.
+            Se ha enviado la propuesta de pacto para <strong>"{selectedAction?.name}"</strong> a {selectedUsers.length} usuario{selectedUsers.length > 1 ? 's' : ''}.
           </p>
           <p className="text-sm text-gray-500">
             Los participantes recibirán una notificación para aceptar o rechazar el pacto.
@@ -2965,21 +2962,23 @@ export default function PactarScreen() {
                 onSearch={handleActionSearch}
                 suggestions={actionSearchResults}
                 onSelect={handleActionSelect}
-                value={selectedAction ? selectedAction.nombre : ''}
-                renderSuggestion={(action) => (
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText size={16} className="text-gray-600" />
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => {
+                  
+                  
+                  return (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{action.name}</div>
+                        <div className="text-sm text-gray-500">{action.description}</div>
+                      </div>
+        
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{action.nombre}</div>
-                      <div className="text-sm text-gray-500">{action.resumen}</div>
-                    </div>
-                    <div className="text-sm font-medium text-blue-600">
-                      {action.valoracion}
-                    </div>
-                  </div>
-                )}
+                  );
+                }}
               />
             </FormField>
           </Card>
@@ -3004,7 +3003,7 @@ export default function PactarScreen() {
                 <h1 className="text-xl font-bold text-gray-800">Dirección de transferencia</h1>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                ¿Quién transfiere karma cuando alguien hace "{selectedAction?.nombre}"? (paso 3 de 5)
+                ¿Quién transfiere karma cuando alguien hace "{selectedAction?.name}"? (paso 3 de 5)
               </p>
             </div>
           </Card>
@@ -3211,7 +3210,7 @@ export default function PactarScreen() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Acción:</span>
-                    <span className="font-medium text-gray-800">{selectedAction.nombre}</span>
+                    <span className="font-medium text-gray-800">{selectedAction.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Participantes:</span>
@@ -3234,7 +3233,7 @@ export default function PactarScreen() {
 
               {/* Dynamic explanation */}
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Cuando cualquier participante realice "{selectedAction.nombre}":</h4>
+                <h4 className="font-medium text-blue-800 mb-2">Cuando cualquier participante realice "{selectedAction.name}":</h4>
                 <div className="text-blue-700 text-sm">
                   {transferDirection === 'give' ? (
                     <p>
@@ -3678,7 +3677,7 @@ export default function ReportarActoScreen() {
           <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">¡Reporte enviado exitosamente!</h2>
           <p className="text-gray-600 mb-4">
-            Se ha reportado que <strong>{selectedActor?.name}</strong> realizó la acción <strong>"{selectedAction?.nombre}"</strong>.
+            Se ha reportado que <strong>{selectedActor?.name}</strong> realizó la acción <strong>"{selectedAction?.name}"</strong>.
           </p>
           <p className="text-sm text-gray-500">
             El reporte será enviado para validación por la comunidad.
@@ -3746,21 +3745,23 @@ export default function ReportarActoScreen() {
                 onSearch={handleActionSearch}
                 suggestions={actionSearchResults}
                 onSelect={handleActionSelect}
-                value={selectedAction ? selectedAction.nombre : ''}
-                renderSuggestion={(action) => (
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText size={16} className="text-gray-600" />
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => {
+                  
+                  
+                  return (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{action.name}</div>
+                        <div className="text-sm text-gray-500">{action.description}</div>
+                      </div>
+                      
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">{action.nombre}</div>
-                      <div className="text-sm text-gray-500">{action.resumen}</div>
-                    </div>
-                    <div className="text-sm font-medium text-blue-600">
-                      {action.valoracion}
-                    </div>
-                  </div>
-                )}
+                  );
+                }}
               />
             </FormField>
 
@@ -3797,12 +3798,8 @@ export default function ReportarActoScreen() {
                 </div>
                 
                 <div className="mb-2">
-                  <div className="font-medium text-gray-800">{selectedAction.nombre}</div>
-                  <div className="text-sm text-gray-600 mb-2">{selectedAction.resumen}</div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Alcance: {selectedAction.alcance}</span>
-                    <span className="font-medium text-blue-600">{selectedAction.valoracion}</span>
-                  </div>
+                  <div className="font-medium text-gray-800">{selectedAction.name}</div>
+                  <div className="text-sm text-gray-600 mb-2">{selectedAction.description}</div>
                 </div>
 
                 {showActionDetails && selectedAction.detalles && (
@@ -6435,17 +6432,18 @@ import actionsData from './json/actions.json';
 import valuationsData from './json/valuations.json';
 import reportsData from './json/reports.json';
 import pactsData from './json/pacts.json';
+import recentCasesData from './json/recentCases.json';
 
 // Export all data arrays
 export const mockMovements = movementsData.movements;
 export const mockUsers = usersData.users;
 export const mockMinkas = minkasData.minkas;
 export const mockActions = actionsData.actions;
-export const mockActionDetails = actionsData.actionDetails;
 export const mockValuations = valuationsData.valuations;
 export const mockReports = reportsData.reports;
 export const mockPacts = pactsData.pacts;
 export const mockUserMinkas = usersData.userMinkas;
+export const mockRecentCases = recentCasesData.recentCases;
 
 // Helper functions
 export const getUsers = () => mockUsers;
@@ -6458,6 +6456,11 @@ export const getUserById = (id) => mockUsers.find(user => user.id === id);
 export const getActionById = (id) => mockActions.find(action => action.id === id);
 export const getReportById = (id) => mockReports.find(report => report.id === id);
 export const getMinkaById = (id) => mockMinkas.find(minka => minka.id === id);
+
+// Get recent cases for an action
+export const getRecentCases = (actionId) => {
+  return mockRecentCases[actionId] || [];
+};
 
 // Get valuations for a specific minka
 export const getMinkaValuations = (minkaId) => {
@@ -6523,7 +6526,6 @@ export const saveAction = (actionData) => {
     id: `action-${Date.now()}`,
     name: actionData.nombre,
     description: actionData.resumen,
-    fullDescription: actionData.detalles,
     icon: 'FileText',
     createdAt: new Date().toISOString(),
     createdBy: 'juan.mk'
@@ -6586,6 +6588,7 @@ export { mockMinkas as minkas };
 export { mockMovements as movements };
 export { mockPacts as pacts };
 export { mockValuations as valuations };
+export { mockRecentCases as recentCases };
 
 // Default export for convenience
 export default {
@@ -6597,7 +6600,7 @@ export default {
   pacts: mockPacts,
   valuations: mockValuations,
   userMinkas: mockUserMinkas,
-  actionDetails: mockActionDetails,
+  recentCases: mockRecentCases,
   // Functions
   getUserById,
   getActionById,
@@ -6614,11 +6617,12 @@ export default {
   saveAction,
   saveReport,
   validateReport,
-  saveValuation
+  saveValuation,
+  getRecentCases
 };
 
 
-//src/services/dataservice.js
+//src/services/dataService.js
 
 // src/services/dataService.js
 import { 
@@ -6626,10 +6630,10 @@ import {
   mockActions, 
   mockReports,
   mockMinkas,
-  mockActionDetails,
   mockMovements,
   mockUserMinkas,
   mockValuations,
+  mockRecentCases,
   searchUsers as mockSearchUsers,
   searchActions as mockSearchActions,
   getUserMinkas as mockGetUserMinkas,
@@ -6643,7 +6647,8 @@ import {
   getActionsWithValuations as mockGetActionsWithValuations,
   saveValuation as mockSaveValuation,
   getUserById,
-  getActionById
+  getActionById,
+  getRecentCases
 } from '@/data';
 
 class DataService {
@@ -6691,8 +6696,18 @@ class DataService {
 
   async getAction(actionId) {
     if (this.useMockData) {
-      // Return extended action details for action pages
-      return mockActionDetails[actionId] || null;
+      // Find the action in the basic actions array
+      const action = getActionById(actionId);
+      if (!action) return null;
+      
+      // Add recent cases if available
+      const recentCases = getRecentCases(actionId);
+      
+      return {
+        ...action,
+        fullDescription: `# ${action.name}\n\n${action.description}`,
+        recentCases: recentCases
+      };
     }
     // return await api.get(`/actions/${actionId}`);
   }
@@ -6867,16 +6882,8 @@ class DataService {
   // Additional helper methods for specific screens
   async getActionWithDetails(actionId) {
     if (this.useMockData) {
-      // This is used by ReportarActoScreen and ValorarAccionScreen
-      const action = getActionById(actionId);
-      const actionDetail = mockActionDetails[actionId];
-      
-      if (!action) return null;
-      
-      return {
-        ...action,
-        detalles: actionDetail?.fullDescription || action.fullDescription || `# ${action.name}\n\n${action.description}`
-      };
+      // Just use getAction since it now includes everything
+      return this.getAction(actionId);
     }
     // return await api.get(`/actions/${actionId}/full`);
   }
@@ -6923,7 +6930,6 @@ class DataService {
   async getValorationData(actionId, minkaId = 'pescadores') {
     if (this.useMockData) {
       const action = getActionById(actionId);
-      const actionDetail = mockActionDetails[actionId];
       
       if (!action) return null;
 
@@ -6931,17 +6937,27 @@ class DataService {
       const minkaValorando = mockMinkas.find(m => m.id === minkaId) || 
         { id: 'pescadores', name: 'Pescadores', members: 85 };
 
+      // For ValorarAccionScreen, we need to determine which minka is affected
+      // This should come from an existing valuation or be selected by the user
+      // For now, default to the same minka
+      const minkaAfectada = minkaValorando;
+
       return {
         accion: {
           id: action.id,
           nombre: action.name,
-          descripcion: actionDetail?.fullDescription || action.fullDescription || `# ${action.name}\n\n${action.description}`
+          descripcion: `# ${action.name}\n\n${action.description}`
         },
         minkaValorandoId: minkaValorando.id,
         minkaValorando: {
           id: minkaValorando.id,
           nombre: minkaValorando.name,
           miembros: minkaValorando.members
+        },
+        minkaAfectada: {
+          id: minkaAfectada.id,
+          nombre: minkaAfectada.name,
+          miembros: minkaAfectada.members
         }
       };
     }
