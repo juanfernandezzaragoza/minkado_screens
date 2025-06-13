@@ -178,10 +178,10 @@ Información adicional relevante...`;
             {/* Details Description */}
             <div className="mb-4">
               <h3 className="text-sm font-medium text-gray-700 mb-2">
-                Detallá tu acción
+                Detallá la acción
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                Describí de qué se trata la acción lo más precisamente que puedas, y caracterizá bien la evidencia que hace falta para demostrar que la acción sucedió.
+                Describí de qué se trata la acción lo más precisamente que puedas, y qué evidencia hace falta para demostrar que la acción sucedió.
               </p>
             </div>
 

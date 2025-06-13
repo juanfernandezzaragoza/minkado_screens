@@ -4063,10 +4063,9 @@ export default function TransferirScreen() {
             
             {/* User Selection */}
             <FormField
-              label="Usuario destinatario"
+              label="¿A quién querés transferir?"
               required
               error={errors.user}
-              description="Buscá y seleccioná el usuario que recibirá la transferencia"
             >
               <SearchInput
                 placeholder="Buscar usuario por nombre o username..."
@@ -4090,10 +4089,9 @@ export default function TransferirScreen() {
 
             {/* Karma Amount */}
             <FormField
-              label="Cantidad de karma"
+              label="¿Cuánto querés transferir?"
               required
               error={errors.karma}
-              description="Ingresá un número positivo para enviar, o negativo para penalizar"
             >
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -4113,7 +4111,7 @@ export default function TransferirScreen() {
             </FormField>
 
             {/* Dynamic Explanation */}
-            {selectedUser && karmaAmount && !isNaN(parseFloat(karmaAmount)) && karmaNum !== 0 && (
+            {karmaAmount && !isNaN(parseFloat(karmaAmount)) && karmaNum !== 0 && (
               <div className={`p-4 border rounded-lg ${
                 isPositive 
                   ? 'bg-green-50 border-green-200' 
@@ -4128,11 +4126,11 @@ export default function TransferirScreen() {
                   <div>
                     {isPositive ? (
                       <p className="text-green-800 font-medium">
-                        Enviar <strong>₭{absAmount}</strong> a <strong>{selectedUser.name}</strong>
+                        Enviar <strong>₭{absAmount}</strong>{selectedUser && <> a <strong>{selectedUser.name}</strong></>}
                       </p>
                     ) : (
                       <p className="text-red-800 font-medium">
-                        Pagar <strong>₭{absAmount}</strong> para penalizar a <strong>{selectedUser.name}</strong> en <strong>₭{absAmount}</strong>
+                        Pagar <strong>₭{absAmount}</strong> para penalizar{selectedUser && <> a <strong>{selectedUser.name}</strong></>} en <strong>₭{absAmount}</strong>
                       </p>
                     )}
                   </div>
@@ -4150,7 +4148,7 @@ export default function TransferirScreen() {
               <textarea
                 value={motivo}
                 onChange={(e) => handleMotivoChange(e.target.value)}
-                placeholder="Ej: Por ayudarme con el trabajo, Por comportamiento inapropiado en el chat..."
+                placeholder="Ej: Por ayudar a Miguel el trabajo, Por molestar a Ana..."
                 rows={4}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
                   errors.motivo ? 'border-red-500' : 'border-gray-300'
@@ -4210,6 +4208,7 @@ export default function TransferirScreen() {
           </form>
         </Card>
       </div>
+
     </>
   );
 }

@@ -260,7 +260,7 @@ export default function TransferirScreen() {
               label="Motivo"
               required
               error={errors.motivo}
-              description={`Explicá el motivo de la transacción. ${selectedUser?.name || 'El usuario'} no sabrá que fuiste vos, pero sí podrá ver el motivo de la transacción.`}
+              description={`${selectedUser?.name || 'El usuario'} no sabrá que fuiste vos, pero sí podrá ver el motivo de la transacción.`}
             >
               <textarea
                 value={motivo}

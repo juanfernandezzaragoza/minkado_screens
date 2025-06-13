@@ -13,10 +13,10 @@ export default function PactarScreen() {
   
   // Form data
   const [selectedAction, setSelectedAction] = useState(null);
-  const [selectedUsers, setSelectedUsers] = useState([]);
   const [transferDirection, setTransferDirection] = useState('');
-  const [transferType, setTransferType] = useState('percentage');
+  const [transferType, setTransferType] = useState('fixed');
   const [transferAmount, setTransferAmount] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
   
   // UI state
   const [currentStep, setCurrentStep] = useState(1);
@@ -45,7 +45,9 @@ export default function PactarScreen() {
   const handleActionSelect = (action) => {
     setSelectedAction(action);
     setActionSearchResults([]);
-    goToNextStep(); // Auto-advance to step 3
+    if (errors.action) {
+      setErrors(prev => ({ ...prev, action: '' }));
+    }
   };
 
   // Handle user search
@@ -75,10 +77,12 @@ export default function PactarScreen() {
   // Handle direction selection
   const handleDirectionSelect = (direction) => {
     setTransferDirection(direction);
-    goToNextStep(); // Auto-advance to step 4
+    if (errors.direction) {
+      setErrors(prev => ({ ...prev, direction: '' }));
+    }
   };
 
-  // Handle form changes
+  // Handle transfer amount change
   const handleTransferAmountChange = (value) => {
     setTransferAmount(value);
     if (errors.amount) {
@@ -90,11 +94,17 @@ export default function PactarScreen() {
   const validateStep = (step) => {
     const newErrors = {};
     
-    if (step === 1 && selectedUsers.length === 0) {
-      newErrors.users = 'Debe invitar al menos un usuario al pacto';
+    if (step === 1) {
+      if (!selectedAction) {
+        newErrors.action = 'Debe seleccionar una acción';
+      }
     }
-    
-    if (step === 4) {
+
+    if (step === 2) {
+      if (!transferDirection) {
+        newErrors.direction = 'Debe seleccionar la dirección de transferencia';
+      }
+      
       if (!transferAmount.trim()) {
         newErrors.amount = 'Debe especificar la cantidad de la transferencia';
       } else {
@@ -108,6 +118,10 @@ export default function PactarScreen() {
         }
       }
     }
+    
+    if (step === 3 && selectedUsers.length === 0) {
+      newErrors.users = 'Debe invitar al menos un usuario al pacto';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -115,7 +129,7 @@ export default function PactarScreen() {
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!validateStep(4)) return;
+    if (!validateStep(3)) return;
 
     setIsSubmitting(true);
     
@@ -164,7 +178,7 @@ export default function PactarScreen() {
     );
   }
 
-  // Step 1: Choose participants
+  // Step 1: Choose action and explain pacts
   if (currentStep === 1) {
     return (
       <>
@@ -177,10 +191,272 @@ export default function PactarScreen() {
                   onClick={goToHome}
                   className="cursor-pointer text-gray-600 mr-2"
                 />
-                <h1 className="text-xl font-bold text-gray-800">Elegir participantes</h1>
+                <h1 className="text-xl font-bold text-gray-800">¿Qué acción activará el pacto?</h1>
+              </div>
+              <p className="text-gray-700 text-sm leading-relaxed mb-4">
+                Los pactos son transferencias automáticas gatilladas cuando sucede una acción (paso 1 de 4)
+              </p>
+              
+
+            </div>
+          </Card>
+        </div>
+
+        <div className="px-4 pb-6">
+          <Card className="p-6">
+            <FormField
+              label="Acción que activará las transferencias automáticas"
+              required
+              error={errors.action}
+            >
+              <SearchInput
+                placeholder="Buscar acción..."
+                onSearch={handleActionSearch}
+                suggestions={actionSearchResults}
+                onSelect={handleActionSelect}
+                value={selectedAction ? selectedAction.name : ''}
+                renderSuggestion={(action) => (
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                      <FileText size={16} className="text-gray-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-800">{action.name}</div>
+                      <div className="text-sm text-gray-500">{action.description}</div>
+                    </div>
+                  </div>
+                )}
+              />
+            </FormField>
+
+            {/* Selected Action Preview */}
+            {selectedAction && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle size={20} className="text-green-600 mr-3" />
+                  <div>
+                    <div className="font-medium text-green-800">Acción seleccionada: {selectedAction.name}</div>
+                    <div className="text-sm text-green-700">{selectedAction.description}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  if (validateStep(1)) goToNextStep();
+                }}
+                disabled={!selectedAction}
+                className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
+                  !selectedAction
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-purple-600 hover:bg-purple-700'
+                }`}
+              >
+                Continuar
+              </button>
+            </div>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Step 2: Choose transfer direction and amount
+  if (currentStep === 2) {
+    return (
+      <>
+        <div className="m-4">
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center mb-3">
+                <ChevronLeft 
+                  size={24} 
+                  onClick={goToPrevStep}
+                  className="cursor-pointer text-gray-600 mr-2"
+                />
+                <h1 className="text-xl font-bold text-gray-800">¿Quién transfiere a quién?</h1>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                Invitá a otros usuarios a formar parte de este pacto (paso 1 de 5)
+                Cuando alguien haga "{selectedAction?.name}", ¿cómo querés que fluya el karma? (paso 2 de 4)
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        <div className="px-4 pb-6">
+          <Card className="p-6">
+            <div className="space-y-6">
+              {/* Direction Selection */}
+              <FormField
+                label="Dirección de la transferencia"
+                required
+                error={errors.direction}
+              >
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => handleDirectionSelect('give')}
+                    className={`w-full border-2 rounded-lg p-6 transition-all text-left ${
+                      transferDirection === 'give'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <ChevronsRightLeft size={24} className="text-blue-600 mr-4" />
+                      <div>
+                        <div className="font-bold text-gray-800 text-lg">Todos para uno</div>
+                        <div className="text-gray-600 mt-1">Los demás participantes le transfieren karma al que realiza la acción</div>
+                        <div className="text-sm text-blue-700 mt-2 font-medium">
+                          Ejemplo: Cuando reparo mi auto, los demás me ayudan con los gastos
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDirectionSelect('receive')}
+                    className={`w-full border-2 rounded-lg p-6 transition-all text-left ${
+                      transferDirection === 'receive'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-300 hover:border-purple-500 hover:bg-purple-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <ChevronsLeftRight size={24} className="text-purple-600 mr-4" />
+                      <div>
+                        <div className="font-bold text-gray-800 text-lg">Uno para todos</div>
+                        <div className="text-gray-600 mt-1">El que realiza la acción les transfiere karma a los demás participantes</div>
+                        <div className="text-sm text-purple-700 mt-2 font-medium">
+                          Ejemplo: Cuando gano dinero, comparto parte con los demás
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </FormField>
+
+              {/* Amount Selection - Only show if direction is selected */}
+              {transferDirection && (
+                <>
+                  {/* Type Selection */}
+                  <FormField
+                    label="¿Cuánto se va a transferir?"
+                    description="Elegí si será un porcentaje o una cantidad fija"
+                  >
+                    <div className="flex gap-3 mb-4">
+                      <label className={`flex-1 border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        transferType === 'percentage' 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="transferType"
+                          value="percentage"
+                          checked={transferType === 'percentage'}
+                          onChange={(e) => setTransferType(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-center">
+                          <Percent size={20} className="text-blue-600 mr-3" />
+                          <div>
+                            <div className="font-medium text-gray-800">Porcentaje</div>
+                            <div className="text-sm text-gray-600">% del karma/costo</div>
+                          </div>
+                        </div>
+                      </label>
+
+                      <label className={`flex-1 border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        transferType === 'fixed' 
+                          ? 'border-purple-500 bg-purple-50' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="transferType"
+                          value="fixed"
+                          checked={transferType === 'fixed'}
+                          onChange={(e) => setTransferType(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-center">
+                          <span className="text-purple-600 mr-3 font-bold text-lg">₭</span>
+                          <div>
+                            <div className="font-medium text-gray-800">Cantidad fija</div>
+                            <div className="text-sm text-gray-600">Karma específico</div>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Amount Input */}
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step={transferType === 'percentage' ? '1' : '0.1'}
+                        max={transferType === 'percentage' ? '100' : '10000'}
+                        min="0.1"
+                        value={transferAmount}
+                        onChange={(e) => handleTransferAmountChange(e.target.value)}
+                        placeholder={transferType === 'percentage' ? 'Ej: 20' : 'Ej: 50.5'}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          errors.amount ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 font-medium">
+                          {transferType === 'percentage' ? '%' : '₭'}
+                        </span>
+                      </div>
+                    </div>
+                    {errors.amount && (
+                      <p className="text-red-500 text-sm mt-1">{errors.amount}</p>
+                    )}
+                  </FormField>
+                </>
+              )}
+
+              <button
+                onClick={() => {
+                  if (validateStep(2)) goToNextStep();
+                }}
+                disabled={!transferDirection || !transferAmount || isNaN(parseFloat(transferAmount))}
+                className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
+                  !transferDirection || !transferAmount || isNaN(parseFloat(transferAmount))
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-purple-600 hover:bg-purple-700'
+                }`}
+              >
+                Continuar
+              </button>
+            </div>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Step 3: Choose participants
+  if (currentStep === 3) {
+    return (
+      <>
+        <div className="m-4">
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center mb-3">
+                <ChevronLeft 
+                  size={24} 
+                  onClick={goToPrevStep}
+                  className="cursor-pointer text-gray-600 mr-2"
+                />
+                <h1 className="text-xl font-bold text-gray-800">¿A quién querés proponer el pacto?</h1>
+              </div>
+              <p className="text-gray-700 text-sm leading-relaxed">
+                Invitá a otros usuarios a formar parte de este pacto (paso 3 de 4)
               </p>
             </div>
           </Card>
@@ -236,7 +512,7 @@ export default function PactarScreen() {
 
             <button
               onClick={() => {
-                if (validateStep(1)) goToNextStep();
+                if (validateStep(3)) goToNextStep();
               }}
               disabled={selectedUsers.length === 0}
               className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
@@ -253,254 +529,8 @@ export default function PactarScreen() {
     );
   }
 
-  // Step 2: Choose action
-  if (currentStep === 2) {
-    return (
-      <>
-        <div className="m-4">
-          <Card>
-            <div className="p-5">
-              <div className="flex items-center mb-3">
-                <ChevronLeft 
-                  size={24} 
-                  onClick={goToPrevStep}
-                  className="cursor-pointer text-gray-600 mr-2"
-                />
-                <h1 className="text-xl font-bold text-gray-800">Elegir acción</h1>
-              </div>
-              <p className="text-gray-700 text-sm leading-relaxed">
-                ¿Qué acción activará las transferencias automáticas? (paso 2 de 5)
-              </p>
-            </div>
-          </Card>
-        </div>
-
-        <div className="px-4 pb-6">
-          <Card className="p-6">
-            <FormField
-              label="Acción asociada"
-              required
-              description="Seleccioná la acción que activará el pacto"
-            >
-              <SearchInput
-                placeholder="Buscar acción..."
-                onSearch={handleActionSearch}
-                suggestions={actionSearchResults}
-                onSelect={handleActionSelect}
-                value={selectedAction ? selectedAction.name : ''}
-                renderSuggestion={(action) => {
-                  
-                  
-                  return (
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                        <FileText size={16} className="text-gray-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">{action.name}</div>
-                        <div className="text-sm text-gray-500">{action.description}</div>
-                      </div>
-        
-                    </div>
-                  );
-                }}
-              />
-            </FormField>
-          </Card>
-        </div>
-      </>
-    );
-  }
-
-  // Step 3: Choose transfer direction
-  if (currentStep === 3) {
-    return (
-      <>
-        <div className="m-4">
-          <Card>
-            <div className="p-5">
-              <div className="flex items-center mb-3">
-                <ChevronLeft 
-                  size={24} 
-                  onClick={goToPrevStep}
-                  className="cursor-pointer text-gray-600 mr-2"
-                />
-                <h1 className="text-xl font-bold text-gray-800">Dirección de transferencia</h1>
-              </div>
-              <p className="text-gray-700 text-sm leading-relaxed">
-                ¿Quién transfiere karma cuando alguien hace "{selectedAction?.name}"? (paso 3 de 5)
-              </p>
-            </div>
-          </Card>
-        </div>
-
-        <div className="px-4 pb-6">
-          <Card className="p-6">
-            <div className="space-y-4">
-              <button
-                onClick={() => handleDirectionSelect('give')}
-                className="w-full border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-lg p-6 transition-all text-left"
-              >
-                <div className="flex items-center">
-                  <ChevronsRightLeft size={24} className="text-blue-600 mr-4" />
-                  <div>
-                    <div className="font-bold text-gray-800 text-lg">Todos para uno</div>
-                    <div className="text-gray-600 mt-1">Los demás participantes le transfieren karma al que realiza la acción</div>
-                    <div className="text-sm text-blue-700 mt-2 font-medium">
-                      Ejemplo: Cuando reparo mi auto, los demás me ayudan con los gastos
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleDirectionSelect('receive')}
-                className="w-full border-2 border-gray-300 hover:border-purple-500 hover:bg-purple-50 rounded-lg p-6 transition-all text-left"
-              >
-                <div className="flex items-center">
-                  <ChevronsLeftRight size={24} className="text-purple-600 mr-4" />
-                  <div>
-                    <div className="font-bold text-gray-800 text-lg">Uno para todos</div>
-                    <div className="text-gray-600 mt-1">El que realiza la acción les transfiere karma a los demás participantes</div>
-                    <div className="text-sm text-purple-700 mt-2 font-medium">
-                      Ejemplo: Cuando gano dinero, comparto parte con los demás
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </Card>
-        </div>
-      </>
-    );
-  }
-
-  // Step 4: Choose amount
+  // Step 4: Summary and submit (same as before)
   if (currentStep === 4) {
-    return (
-      <>
-        <div className="m-4">
-          <Card>
-            <div className="p-5">
-              <div className="flex items-center mb-3">
-                <ChevronLeft 
-                  size={24} 
-                  onClick={goToPrevStep}
-                  className="cursor-pointer text-gray-600 mr-2"
-                />
-                <h1 className="text-xl font-bold text-gray-800">Cantidad a transferir</h1>
-              </div>
-              <p className="text-gray-700 text-sm leading-relaxed">
-                ¿Cuánto karma se transferirá? (paso 4 de 5)
-              </p>
-            </div>
-          </Card>
-        </div>
-
-        <div className="px-4 pb-6">
-          <Card className="p-6">
-            <div className="space-y-6">
-              {/* Type Selection */}
-              <FormField
-                label="Tipo de transferencia"
-                description="Elegí si será un porcentaje o una cantidad fija"
-              >
-                <div className="flex gap-3">
-                  <label className={`flex-1 border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                    transferType === 'percentage' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="transferType"
-                      value="percentage"
-                      checked={transferType === 'percentage'}
-                      onChange={(e) => setTransferType(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center">
-                      <Percent size={20} className="text-blue-600 mr-3" />
-                      <div>
-                        <div className="font-medium text-gray-800">Porcentaje</div>
-                        <div className="text-sm text-gray-600">% del karma/costo</div>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className={`flex-1 border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                    transferType === 'fixed' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="transferType"
-                      value="fixed"
-                      checked={transferType === 'fixed'}
-                      onChange={(e) => setTransferType(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center">
-                      <span className="text-purple-600 mr-3 font-bold text-lg">₭</span>
-                      <div>
-                        <div className="font-medium text-gray-800">Cantidad fija</div>
-                        <div className="text-sm text-gray-600">Karma específico</div>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </FormField>
-
-              {/* Amount Input */}
-              <FormField
-                label={`${transferType === 'percentage' ? 'Porcentaje' : 'Cantidad'} a transferir`}
-                required
-                error={errors.amount}
-              >
-                <div className="relative">
-                  <input
-                    type="number"
-                    step={transferType === 'percentage' ? '1' : '0.1'}
-                    max={transferType === 'percentage' ? '100' : '10000'}
-                    min="0.1"
-                    value={transferAmount}
-                    onChange={(e) => handleTransferAmountChange(e.target.value)}
-                    placeholder={transferType === 'percentage' ? 'Ej: 20' : 'Ej: 50.5'}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.amount ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 font-medium">
-                      {transferType === 'percentage' ? '%' : '₭'}
-                    </span>
-                  </div>
-                </div>
-              </FormField>
-
-              <button
-                onClick={() => {
-                  if (validateStep(4)) goToNextStep();
-                }}
-                disabled={!transferAmount || isNaN(parseFloat(transferAmount))}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-                  !transferAmount || isNaN(parseFloat(transferAmount))
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-purple-600 hover:bg-purple-700'
-                }`}
-              >
-                Continuar
-              </button>
-            </div>
-          </Card>
-        </div>
-      </>
-    );
-  }
-
-  // Step 5: Summary and submit
-  if (currentStep === 5) {
     const numAmount = parseFloat(transferAmount) || 0;
     const totalParticipants = selectedUsers.length + 1;
     const isReceiving = transferDirection === 'receive';
@@ -520,7 +550,7 @@ export default function PactarScreen() {
                 <h1 className="text-xl font-bold text-gray-800">Resumen del pacto</h1>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                Revisá los detalles antes de proponer el pacto (paso 5 de 5)
+                Revisá los detalles antes de proponer el pacto (paso 4 de 4)
               </p>
             </div>
           </Card>
